@@ -134,7 +134,7 @@ export const AddCardTab: React.FC<AddCardTabProps> = ({ onCardAdded, onOpenSetti
   return (
     <div className="max-w-3xl mx-auto space-y-6">
       {/* Top Card: Quick Input & AI Analysis */}
-      <div className="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm transition-colors">
+      <div className="p-4 sm:p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm transition-colors">
         <div className="flex items-center justify-between mb-4">
           <div>
             <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
@@ -212,7 +212,7 @@ export const AddCardTab: React.FC<AddCardTabProps> = ({ onCardAdded, onOpenSetti
       {/* Main Details Form */}
       <form
         onSubmit={handleSave}
-        className="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-5 transition-colors"
+        className="p-4 sm:p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-4 sm:space-y-5 transition-colors"
       >
         <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200 uppercase tracking-wider text-[11px]">
           Thông tin chi tiết thẻ

@@ -106,8 +106,8 @@ export const ReviewTab: React.FC<ReviewTabProps> = ({ cards, onStartSession }) =
       </div>
 
       {/* Mode Selector & Start Action */}
-      <div className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-6 transition-colors">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="p-4 sm:p-6 rounded-2xl sm:rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-4 sm:space-y-6 transition-colors">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
           <div>
             <h3 className="text-base font-bold text-slate-900 dark:text-white">Lựa Chọn Dạng Bài Ôn Tập</h3>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
@@ -115,12 +115,12 @@ export const ReviewTab: React.FC<ReviewTabProps> = ({ cards, onStartSession }) =
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="grid grid-cols-1 sm:flex sm:flex-wrap items-stretch sm:items-center gap-2 w-full sm:w-auto">
             <button
               onClick={() => onStartSession(selectedMode, dueCardsToday, false)}
               disabled={dueCardsToday.length === 0}
               title={dueCardsToday.length === 0 ? 'Hôm nay chưa có thẻ nào đến hạn ôn' : 'Bắt đầu phiên ôn thẻ đến hạn'}
-              className="px-5 py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs sm:text-sm shadow-lg shadow-indigo-600/25 disabled:opacity-40 disabled:cursor-not-allowed transition flex items-center justify-center gap-2"
+              className="w-full sm:w-auto px-5 py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs sm:text-sm shadow-lg shadow-indigo-600/25 disabled:opacity-40 disabled:cursor-not-allowed transition flex items-center justify-center gap-2"
             >
               <Play className="w-4 h-4 fill-current" />
               Ôn thẻ đến hạn ({dueCardsToday.length})
@@ -130,7 +130,7 @@ export const ReviewTab: React.FC<ReviewTabProps> = ({ cards, onStartSession }) =
               <button
                 onClick={() => onStartSession(selectedMode, cards, true)}
                 title="Luyện tập tự do tất cả thẻ trong sổ theo dạng bài đã chọn mà không làm xáo trộn tiến độ SRS"
-                className="px-4 py-3 rounded-2xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs sm:text-sm border border-slate-300/60 dark:border-slate-700 transition flex items-center justify-center gap-2"
+                className="w-full sm:w-auto px-4 py-3 rounded-2xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs sm:text-sm border border-slate-300/60 dark:border-slate-700 transition flex items-center justify-center gap-2"
               >
                 <Sparkles className="w-4 h-4 text-indigo-500" />
                 Luyện tự do ({totalCards} từ)
@@ -140,12 +140,12 @@ export const ReviewTab: React.FC<ReviewTabProps> = ({ cards, onStartSession }) =
         </div>
 
         {/* Mode Grid Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5 sm:gap-3">
           {modeOptions.map((opt) => (
             <button
               key={opt.id}
               onClick={() => setSelectedMode(opt.id)}
-              className={`p-4 rounded-2xl border text-left transition-all ${
+              className={`p-3.5 sm:p-4 rounded-xl sm:rounded-2xl border text-left transition-all ${
                 selectedMode === opt.id
                   ? 'border-indigo-600 dark:border-indigo-500 bg-indigo-50/60 dark:bg-indigo-950/40 ring-2 ring-indigo-500/20'
                   : 'border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50'
@@ -185,13 +185,13 @@ export const ReviewTab: React.FC<ReviewTabProps> = ({ cards, onStartSession }) =
               <p className="p-4 text-xs text-slate-400 text-center">Không có thẻ nào cần ôn hôm nay.</p>
             ) : (
               scheduleGroups.today.map((card) => (
-                <div key={card.id} className="px-5 py-2.5 flex items-center justify-between text-xs hover:bg-slate-50/50 dark:hover:bg-slate-800/30">
-                  <div className="flex items-center gap-2">
-                    <strong className="text-slate-900 dark:text-white font-semibold">{card.term}</strong>
-                    {card.pos && <span className="text-slate-400">({card.pos})</span>}
-                    <span className="text-slate-600 dark:text-slate-300">— {card.vi}</span>
+                <div key={card.id} className="px-3.5 sm:px-5 py-2.5 flex items-center justify-between gap-2 text-xs hover:bg-slate-50/50 dark:hover:bg-slate-800/30">
+                  <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 flex-1">
+                    <strong className="text-slate-900 dark:text-white font-semibold truncate shrink-0 max-w-[110px] sm:max-w-none">{card.term}</strong>
+                    {card.pos && <span className="text-slate-400 shrink-0">({card.pos})</span>}
+                    <span className="text-slate-600 dark:text-slate-300 truncate">— {card.vi}</span>
                   </div>
-                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 shrink-0">
                     Cấp {card.box}
                   </span>
                 </div>
@@ -214,13 +214,13 @@ export const ReviewTab: React.FC<ReviewTabProps> = ({ cards, onStartSession }) =
               <p className="p-4 text-xs text-slate-400 text-center">Không có thẻ nào hẹn ôn ngày mai.</p>
             ) : (
               scheduleGroups.tomorrow.map((card) => (
-                <div key={card.id} className="px-5 py-2.5 flex items-center justify-between text-xs hover:bg-slate-50/50 dark:hover:bg-slate-800/30">
-                  <div className="flex items-center gap-2">
-                    <strong className="text-slate-900 dark:text-white font-semibold">{card.term}</strong>
-                    {card.pos && <span className="text-slate-400">({card.pos})</span>}
-                    <span className="text-slate-600 dark:text-slate-300">— {card.vi}</span>
+                <div key={card.id} className="px-3.5 sm:px-5 py-2.5 flex items-center justify-between gap-2 text-xs hover:bg-slate-50/50 dark:hover:bg-slate-800/30">
+                  <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 flex-1">
+                    <strong className="text-slate-900 dark:text-white font-semibold truncate shrink-0 max-w-[110px] sm:max-w-none">{card.term}</strong>
+                    {card.pos && <span className="text-slate-400 shrink-0">({card.pos})</span>}
+                    <span className="text-slate-600 dark:text-slate-300 truncate">— {card.vi}</span>
                   </div>
-                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 shrink-0">
                     Cấp {card.box}
                   </span>
                 </div>
@@ -243,14 +243,14 @@ export const ReviewTab: React.FC<ReviewTabProps> = ({ cards, onStartSession }) =
               <p className="p-4 text-xs text-slate-400 text-center">Không có thẻ nào trong danh sách tiếp theo.</p>
             ) : (
               scheduleGroups.upcoming.map((card) => (
-                <div key={card.id} className="px-5 py-2.5 flex items-center justify-between text-xs hover:bg-slate-50/50 dark:hover:bg-slate-800/30">
-                  <div className="flex items-center gap-2">
-                    <strong className="text-slate-900 dark:text-white font-semibold">{card.term}</strong>
-                    {card.pos && <span className="text-slate-400">({card.pos})</span>}
-                    <span className="text-slate-600 dark:text-slate-300">— {card.vi}</span>
+                <div key={card.id} className="px-3.5 sm:px-5 py-2.5 flex items-center justify-between gap-2 text-xs hover:bg-slate-50/50 dark:hover:bg-slate-800/30">
+                  <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 flex-1">
+                    <strong className="text-slate-900 dark:text-white font-semibold truncate shrink-0 max-w-[110px] sm:max-w-none">{card.term}</strong>
+                    {card.pos && <span className="text-slate-400 shrink-0">({card.pos})</span>}
+                    <span className="text-slate-600 dark:text-slate-300 truncate">— {card.vi}</span>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <span className="text-[10px] text-slate-400">
+                  <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+                    <span className="text-[10px] text-slate-400 hidden xs:inline">
                       {new Date(card.due).toLocaleDateString('vi-VN')}
                     </span>
                     <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">

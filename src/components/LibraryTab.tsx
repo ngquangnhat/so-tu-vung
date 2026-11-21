@@ -205,69 +205,71 @@ export const LibraryTab: React.FC<LibraryTabProps> = ({ cards, onCardDeleted }) 
           {filteredCards.map((card) => (
             <div
               key={card.id}
-              className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm hover:border-indigo-300 dark:hover:border-indigo-800/80 transition-all space-y-3"
+              className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm hover:border-indigo-300 dark:hover:border-indigo-800/80 transition-all space-y-3"
             >
               {/* Header row of card */}
-              <div className="flex items-start justify-between gap-3">
-                <div className="space-y-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-lg font-bold text-slate-900 dark:text-white tracking-tight">
+              <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2.5 sm:gap-3">
+                <div className="space-y-1 min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                    <span className="text-base sm:text-lg font-bold text-slate-900 dark:text-white tracking-tight break-words">
                       {card.term}
                     </span>
                     {card.pos && (
-                      <span className="text-xs font-semibold px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                      <span className="text-[10px] sm:text-xs font-semibold px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
                         {card.pos}
                       </span>
                     )}
                     {card.ipa && (
-                      <span className="text-xs text-slate-500 dark:text-slate-400 font-mono">
+                      <span className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 font-mono">
                         {card.ipa}
                       </span>
                     )}
                     <button
                       onClick={() => speakText(card.term)}
                       title="Nghe phát âm"
-                      className="p-1.5 rounded-lg text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 transition"
+                      className="p-1 sm:p-1.5 rounded-lg text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 transition"
                     >
-                      <Volume2 className="w-4 h-4" />
+                      <Volume2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                     </button>
                   </div>
 
-                  <p className="text-sm font-semibold text-indigo-600 dark:text-indigo-400">
+                  <p className="text-xs sm:text-sm font-semibold text-indigo-600 dark:text-indigo-400 break-words">
                     {card.vi}
                   </p>
                 </div>
 
                 {/* Box Badge, Edit and Delete buttons */}
-                <div className="flex items-center gap-2 shrink-0">
+                <div className="flex items-center justify-between sm:justify-end gap-2 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100 dark:border-slate-800/60">
                   <span
-                    className={`text-xs font-bold px-2.5 py-1 rounded-lg border ${getBoxBadgeClass(
+                    className={`text-[10px] sm:text-xs font-bold px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-lg border ${getBoxBadgeClass(
                       card.box
                     )}`}
                   >
                     Cấp {card.box}
                   </span>
 
-                  <button
-                    onClick={() => handleOpenEdit(card)}
-                    title="Chỉnh sửa thẻ"
-                    className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 transition"
-                  >
-                    <Edit3 className="w-4 h-4" />
-                  </button>
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => handleOpenEdit(card)}
+                      title="Chỉnh sửa thẻ"
+                      className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 transition"
+                    >
+                      <Edit3 className="w-4 h-4" />
+                    </button>
 
-                  <button
-                    onClick={() => handleDelete(card.id)}
-                    title={confirmDeleteId === card.id ? 'Xác nhận xoá thẻ này?' : 'Xoá thẻ'}
-                    className={`px-2.5 py-1 rounded-lg text-xs font-medium transition flex items-center gap-1 ${
-                      confirmDeleteId === card.id
-                        ? 'bg-rose-600 text-white animate-pulse'
-                        : 'text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40'
-                    }`}
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                    {confirmDeleteId === card.id ? 'Chắc chứ?' : ''}
-                  </button>
+                    <button
+                      onClick={() => handleDelete(card.id)}
+                      title={confirmDeleteId === card.id ? 'Xác nhận xoá thẻ này?' : 'Xoá thẻ'}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-medium transition flex items-center gap-1 ${
+                        confirmDeleteId === card.id
+                          ? 'bg-rose-600 text-white animate-pulse'
+                          : 'text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40'
+                      }`}
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      {confirmDeleteId === card.id ? 'Xác nhận xoá?' : ''}
+                    </button>
+                  </div>
                 </div>
               </div>
 

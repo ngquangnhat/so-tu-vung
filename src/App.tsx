@@ -102,7 +102,7 @@ export const App: React.FC = () => {
       />
 
       {/* Main Content Area */}
-      <main className="flex-1 max-w-5xl w-full mx-auto px-4 py-6">
+      <main className="flex-1 max-w-5xl w-full mx-auto px-3 sm:px-4 py-4 sm:py-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
         {activeReviewSession ? (
           <ReviewSession
             initialCards={activeReviewSession.cards}
@@ -115,22 +115,22 @@ export const App: React.FC = () => {
             }}
           />
         ) : (
-          <div className="space-y-6">
+          <div className="space-y-4 sm:space-y-6">
             {/* Primary Tab Navigation */}
             <div className="flex justify-center">
-              <nav className="inline-flex p-1.5 rounded-2xl bg-slate-200/80 dark:bg-slate-900 border border-slate-300/50 dark:border-slate-800 shadow-inner">
+              <nav className="w-full sm:w-auto grid grid-cols-3 sm:inline-flex p-1 sm:p-1.5 rounded-2xl bg-slate-200/80 dark:bg-slate-900 border border-slate-300/50 dark:border-slate-800 shadow-inner">
                 <button
                   onClick={() => setActiveTab('review')}
-                  className={`px-5 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 transition-all ${
+                  className={`px-2 sm:px-5 py-2 sm:py-2.5 rounded-xl font-bold text-[11px] sm:text-xs flex items-center justify-center gap-1.5 sm:gap-2 transition-all ${
                     activeTab === 'review'
                       ? 'bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-md'
                       : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                   }`}
                 >
-                  <BookOpen className="w-4 h-4" />
-                  Ôn Tập
+                  <BookOpen className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+                  <span className="truncate">Ôn Tập</span>
                   {dueTodayCount > 0 && (
-                    <span className="w-5 h-5 rounded-full bg-amber-500 text-white font-bold text-[10px] flex items-center justify-center animate-pulse">
+                    <span className="w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-amber-500 text-white font-bold text-[9px] sm:text-[10px] flex items-center justify-center shrink-0">
                       {dueTodayCount}
                     </span>
                   )}
@@ -138,27 +138,31 @@ export const App: React.FC = () => {
 
                 <button
                   onClick={() => setActiveTab('add')}
-                  className={`px-5 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 transition-all ${
+                  className={`px-2 sm:px-5 py-2 sm:py-2.5 rounded-xl font-bold text-[11px] sm:text-xs flex items-center justify-center gap-1.5 sm:gap-2 transition-all ${
                     activeTab === 'add'
                       ? 'bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-md'
                       : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                   }`}
                 >
-                  <PlusCircle className="w-4 h-4" />
-                  Thêm Từ Mới
+                  <PlusCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+                  <span className="truncate">
+                    Thêm <span className="hidden sm:inline">Từ </span>Mới
+                  </span>
                 </button>
 
                 <button
                   onClick={() => setActiveTab('library')}
-                  className={`px-5 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 transition-all ${
+                  className={`px-2 sm:px-5 py-2 sm:py-2.5 rounded-xl font-bold text-[11px] sm:text-xs flex items-center justify-center gap-1.5 sm:gap-2 transition-all ${
                     activeTab === 'library'
                       ? 'bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-md'
                       : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                   }`}
                 >
-                  <Library className="w-4 h-4" />
-                  Thư Viện Từ
-                  <span className="text-[10px] px-1.5 py-0.2 rounded-md bg-slate-200 dark:bg-slate-700 font-semibold">
+                  <Library className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+                  <span className="truncate">
+                    Thư Viện<span className="hidden sm:inline"> Từ</span>
+                  </span>
+                  <span className="text-[9px] sm:text-[10px] px-1 sm:px-1.5 py-0.2 rounded-md bg-slate-200 dark:bg-slate-700 font-semibold shrink-0">
                     {totalCount}
                   </span>
                 </button>

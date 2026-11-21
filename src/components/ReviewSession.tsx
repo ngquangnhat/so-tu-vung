@@ -477,16 +477,16 @@ export const ReviewSession: React.FC<ReviewSessionProps> = ({
       )}
 
       {/* Exercise Card Body */}
-      <div className="p-6 sm:p-8 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xl transition-all">
+      <div className="p-4 sm:p-8 rounded-2xl sm:rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xl transition-all">
         {/* 1. FLIP CARD MODE */}
         {effectiveMode === 'flip' && (
           <div className="space-y-6 text-center">
-            <div className="min-h-[160px] flex flex-col justify-center items-center space-y-3">
+            <div className="min-h-[140px] sm:min-h-[160px] flex flex-col justify-center items-center space-y-3">
               <span className="text-xs uppercase font-semibold tracking-wider text-slate-400">
                 {currentCard.cat} • {currentCard.pos || 'từ vựng'}
               </span>
 
-              <h3 className="text-3xl sm:text-4xl font-extrabold text-slate-900 dark:text-white tracking-tight">
+              <h3 className="text-2xl sm:text-4xl font-extrabold text-slate-900 dark:text-white tracking-tight break-words max-w-full">
                 {currentCard.term}
               </h3>
 
@@ -524,24 +524,29 @@ export const ReviewSession: React.FC<ReviewSessionProps> = ({
               <button
                 onClick={() => setIsFlipped(true)}
                 disabled={isGrading}
-                className="w-full py-3.5 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm shadow-md shadow-indigo-600/20 transition flex items-center justify-center gap-2 disabled:opacity-50"
+                className="w-full py-3 sm:py-3.5 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs sm:text-sm shadow-md shadow-indigo-600/20 transition flex items-center justify-center gap-2 disabled:opacity-50"
               >
-                <RotateCcw className="w-4 h-4" /> Lật Thẻ Xem Nghĩa (Nhấn Phím Cách hoặc Enter)
+                <RotateCcw className="w-4 h-4 shrink-0" />
+                <span>
+                  Lật Thẻ Xem Nghĩa <span className="hidden sm:inline">(Phím Cách / Enter)</span>
+                </span>
               </button>
             ) : (
               <div className="space-y-2 pt-2 animate-fadeIn">
                 <span className="text-[11px] text-slate-400 font-medium">
-                  Đánh giá độ nhớ của bạn (hoặc bấm số 1, 2, 3, 4 trên bàn phím):
+                  Đánh giá độ nhớ của bạn<span className="hidden sm:inline"> (hoặc bấm số 1, 2, 3, 4 trên bàn phím)</span>:
                 </span>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-2.5">
                   {/* Quên */}
                   <button
                     onClick={() => handleGradeCard('forgot')}
                     disabled={isGrading}
-                    className="p-3 rounded-2xl bg-rose-50 dark:bg-rose-950/50 hover:bg-rose-100 dark:hover:bg-rose-900/60 border border-rose-200 dark:border-rose-900/60 text-center transition disabled:opacity-50"
+                    className="p-2.5 sm:p-3 rounded-xl sm:rounded-2xl bg-rose-50 dark:bg-rose-950/50 hover:bg-rose-100 dark:hover:bg-rose-900/60 border border-rose-200 dark:border-rose-900/60 text-center transition disabled:opacity-50"
                   >
-                    <span className="block text-xs font-bold text-rose-700 dark:text-rose-300">[1] Quên</span>
-                    <span className="block text-[11px] text-rose-500 dark:text-rose-400 mt-0.5">
+                    <span className="block text-xs font-bold text-rose-700 dark:text-rose-300">
+                      <span className="hidden sm:inline">[1] </span>Quên
+                    </span>
+                    <span className="block text-[10px] sm:text-[11px] text-rose-500 dark:text-rose-400 mt-0.5">
                       {getPreviewIntervalText('forgot', currentCard.box)}
                     </span>
                   </button>
@@ -550,10 +555,12 @@ export const ReviewSession: React.FC<ReviewSessionProps> = ({
                   <button
                     onClick={() => handleGradeCard('hard')}
                     disabled={isGrading}
-                    className="p-3 rounded-2xl bg-amber-50 dark:bg-amber-950/50 hover:bg-amber-100 dark:hover:bg-amber-900/60 border border-amber-200 dark:border-amber-900/60 text-center transition disabled:opacity-50"
+                    className="p-2.5 sm:p-3 rounded-xl sm:rounded-2xl bg-amber-50 dark:bg-amber-950/50 hover:bg-amber-100 dark:hover:bg-amber-900/60 border border-amber-200 dark:border-amber-900/60 text-center transition disabled:opacity-50"
                   >
-                    <span className="block text-xs font-bold text-amber-700 dark:text-amber-300">[2] Khó</span>
-                    <span className="block text-[11px] text-amber-500 dark:text-amber-400 mt-0.5">
+                    <span className="block text-xs font-bold text-amber-700 dark:text-amber-300">
+                      <span className="hidden sm:inline">[2] </span>Khó
+                    </span>
+                    <span className="block text-[10px] sm:text-[11px] text-amber-500 dark:text-amber-400 mt-0.5">
                       {getPreviewIntervalText('hard', currentCard.box)}
                     </span>
                   </button>
@@ -562,10 +569,12 @@ export const ReviewSession: React.FC<ReviewSessionProps> = ({
                   <button
                     onClick={() => handleGradeCard('good')}
                     disabled={isGrading}
-                    className="p-3 rounded-2xl bg-blue-50 dark:bg-blue-950/50 hover:bg-blue-100 dark:hover:bg-blue-900/60 border border-blue-200 dark:border-blue-900/60 text-center transition disabled:opacity-50"
+                    className="p-2.5 sm:p-3 rounded-xl sm:rounded-2xl bg-blue-50 dark:bg-blue-950/50 hover:bg-blue-100 dark:hover:bg-blue-900/60 border border-blue-200 dark:border-blue-900/60 text-center transition disabled:opacity-50"
                   >
-                    <span className="block text-xs font-bold text-blue-700 dark:text-blue-300">[3] Tốt</span>
-                    <span className="block text-[11px] text-blue-500 dark:text-blue-400 mt-0.5">
+                    <span className="block text-xs font-bold text-blue-700 dark:text-blue-300">
+                      <span className="hidden sm:inline">[3] </span>Tốt
+                    </span>
+                    <span className="block text-[10px] sm:text-[11px] text-blue-500 dark:text-blue-400 mt-0.5">
                       {getPreviewIntervalText('good', currentCard.box)}
                     </span>
                   </button>
@@ -574,10 +583,12 @@ export const ReviewSession: React.FC<ReviewSessionProps> = ({
                   <button
                     onClick={() => handleGradeCard('easy')}
                     disabled={isGrading}
-                    className="p-3 rounded-2xl bg-emerald-50 dark:bg-emerald-950/50 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 border border-emerald-200 dark:border-emerald-900/60 text-center transition disabled:opacity-50"
+                    className="p-2.5 sm:p-3 rounded-xl sm:rounded-2xl bg-emerald-50 dark:bg-emerald-950/50 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 border border-emerald-200 dark:border-emerald-900/60 text-center transition disabled:opacity-50"
                   >
-                    <span className="block text-xs font-bold text-emerald-700 dark:text-emerald-300">[4] Dễ</span>
-                    <span className="block text-[11px] text-emerald-500 dark:text-emerald-400 mt-0.5">
+                    <span className="block text-xs font-bold text-emerald-700 dark:text-emerald-300">
+                      <span className="hidden sm:inline">[4] </span>Dễ
+                    </span>
+                    <span className="block text-[10px] sm:text-[11px] text-emerald-500 dark:text-emerald-400 mt-0.5">
                       {getPreviewIntervalText('easy', currentCard.box)}
                     </span>
                   </button>
@@ -845,9 +856,11 @@ export const ReviewSession: React.FC<ReviewSessionProps> = ({
             <button
               onClick={() => handleGradeCard(autoGradedResult.grade)}
               disabled={isGrading}
-              className="w-full py-3.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm shadow-md flex items-center justify-center gap-2 transition disabled:opacity-50"
+              className="w-full py-3.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs sm:text-sm shadow-md flex items-center justify-center gap-2 transition disabled:opacity-50"
             >
-              Tiếp tục thẻ kế tiếp (Nhấn Enter) <ArrowRight className="w-4 h-4" />
+              <span>Tiếp tục thẻ kế tiếp</span>
+              <span className="hidden sm:inline">(Nhấn Enter)</span>
+              <ArrowRight className="w-4 h-4 shrink-0" />
             </button>
           </div>
         )}
