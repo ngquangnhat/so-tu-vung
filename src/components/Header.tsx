@@ -50,18 +50,16 @@ export const Header: React.FC<HeaderProps> = ({
           {/* Streak Flame Badge */}
           <div
             title={`Chuỗi ngày học liên tục: ${streak.currentStreak} ngày (Kỷ lục: ${streak.longestStreak} ngày)`}
-            className={`px-3 py-1 rounded-xl text-xs font-bold border flex items-center gap-1.5 transition ${
-              streak.currentStreak > 0
-                ? 'bg-gradient-to-r from-orange-500/10 to-amber-500/10 border-orange-300 dark:border-orange-800 text-orange-600 dark:text-orange-400'
-                : 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-500'
-            }`}
+            className={`px-3 py-1 rounded-xl text-xs font-bold border flex items-center gap-1.5 transition ${streak.currentStreak > 0
+              ? 'bg-gradient-to-r from-orange-500/10 to-amber-500/10 border-orange-300 dark:border-orange-800 text-orange-600 dark:text-orange-400'
+              : 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-500'
+              }`}
           >
             <Flame
-              className={`w-4 h-4 ${
-                streak.currentStreak > 0
-                  ? 'text-orange-500 fill-orange-500/20'
-                  : 'text-slate-400'
-              }`}
+              className={`w-4 h-4 ${streak.currentStreak > 0
+                ? 'text-orange-500 fill-orange-500/20'
+                : 'text-slate-400'
+                }`}
             />
             <span>
               {streak.currentStreak > 0 ? `${streak.currentStreak} ngày` : 'Chưa có streak'}

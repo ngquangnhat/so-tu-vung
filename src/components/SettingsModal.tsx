@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { X, Key, Download, Upload, AlertTriangle, Check, Shield } from 'lucide-react';
 import { getAISettings, saveAISettings, DEFAULT_GEMINI_KEY } from '../services/ai';
 import { exportCardsToJson, importCardsFromJson } from '../services/db';
@@ -15,6 +15,16 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
   const [apiKey, setApiKey] = useState('');
   const [savedSuccess, setSavedSuccess] = useState(false);
   const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (saveTimerRef.current) {
+        clearTimeout(saveTimerRef.current);
+        saveTimerRef.current = null;
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (isOpen) {
@@ -34,7 +44,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
     const finalKey = apiKey.trim() || (provider === 'gemini' ? DEFAULT_GEMINI_KEY : '');
     saveAISettings({ provider, apiKey: finalKey });
     setSavedSuccess(true);
-    setTimeout(() => setSavedSuccess(false), 2500);
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(() => {
+      setSavedSuccess(false);
+      saveTimerRef.current = null;
+    }, 2500);
   };
 
   const handleExport = async () => {

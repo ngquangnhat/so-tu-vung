@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { Search, Volume2, Trash2, Calendar, Sparkles, Filter, Edit3, X, Check } from 'lucide-react';
 import { Card, CardCategory, CARD_CATEGORIES, getErrorMessage } from '../types/card';
 import { db } from '../services/db';
@@ -13,6 +13,16 @@ export const LibraryTab: React.FC<LibraryTabProps> = ({ cards, onCardDeleted }) 
   const [search, setSearch] = useState('');
   const [selectedCat, setSelectedCat] = useState<string>('all');
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const deleteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (deleteTimerRef.current) {
+        clearTimeout(deleteTimerRef.current);
+        deleteTimerRef.current = null;
+      }
+    };
+  }, []);
 
   // Edit Card Modal state
   const [editingCard, setEditingCard] = useState<Card | null>(null);
@@ -57,13 +67,21 @@ export const LibraryTab: React.FC<LibraryTabProps> = ({ cards, onCardDeleted }) 
   }, [cards]);
 
   const handleDelete = async (id: string) => {
+    if (deleteTimerRef.current) {
+      clearTimeout(deleteTimerRef.current);
+      deleteTimerRef.current = null;
+    }
+
     if (confirmDeleteId === id) {
       await db.cards.delete(id);
       setConfirmDeleteId(null);
       onCardDeleted();
     } else {
       setConfirmDeleteId(id);
-      setTimeout(() => setConfirmDeleteId(null), 4000);
+      deleteTimerRef.current = setTimeout(() => {
+        setConfirmDeleteId(null);
+        deleteTimerRef.current = null;
+      }, 4000);
     }
   };
 

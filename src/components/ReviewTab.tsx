@@ -5,7 +5,7 @@ import { groupCardsBySchedule, isDueToday } from '../services/srs';
 
 interface ReviewTabProps {
   cards: Card[];
-  onStartSession: (mode: ReviewMode, dueCards: Card[]) => void;
+  onStartSession: (mode: ReviewMode, reviewCards: Card[], isFreePractice?: boolean) => void;
 }
 
 export const ReviewTab: React.FC<ReviewTabProps> = ({ cards, onStartSession }) => {
@@ -111,18 +111,32 @@ export const ReviewTab: React.FC<ReviewTabProps> = ({ cards, onStartSession }) =
           <div>
             <h3 className="text-base font-bold text-slate-900 dark:text-white">Lựa Chọn Dạng Bài Ôn Tập</h3>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              Mặc định sẽ trộn lẫn để bạn nhớ sâu qua đọc, nghe, nói, viết.
+              Chọn dạng bài bạn muốn luyện tập hoặc Trộn lẫn để AI kết hợp linh hoạt.
             </p>
           </div>
 
-          <button
-            onClick={() => onStartSession(selectedMode, dueCardsToday)}
-            disabled={dueCardsToday.length === 0}
-            className="px-6 py-3.5 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm shadow-lg shadow-indigo-600/25 disabled:opacity-40 disabled:cursor-not-allowed transition flex items-center justify-center gap-2 shrink-0"
-          >
-            <Play className="w-4 h-4 fill-current" />
-            Bắt đầu ôn ({dueCardsToday.length} thẻ đến hạn)
-          </button>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              onClick={() => onStartSession(selectedMode, dueCardsToday, false)}
+              disabled={dueCardsToday.length === 0}
+              title={dueCardsToday.length === 0 ? 'Hôm nay chưa có thẻ nào đến hạn ôn' : 'Bắt đầu phiên ôn thẻ đến hạn'}
+              className="px-5 py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs sm:text-sm shadow-lg shadow-indigo-600/25 disabled:opacity-40 disabled:cursor-not-allowed transition flex items-center justify-center gap-2"
+            >
+              <Play className="w-4 h-4 fill-current" />
+              Ôn thẻ đến hạn ({dueCardsToday.length})
+            </button>
+
+            {totalCards > 0 && (
+              <button
+                onClick={() => onStartSession(selectedMode, cards, true)}
+                title="Luyện tập tự do tất cả thẻ trong sổ theo dạng bài đã chọn mà không làm xáo trộn tiến độ SRS"
+                className="px-4 py-3 rounded-2xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs sm:text-sm border border-slate-300/60 dark:border-slate-700 transition flex items-center justify-center gap-2"
+              >
+                <Sparkles className="w-4 h-4 text-indigo-500" />
+                Luyện tự do ({totalCards} từ)
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Mode Grid Cards */}

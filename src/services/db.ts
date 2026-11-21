@@ -59,13 +59,31 @@ function sanitizeCardRecord(record: unknown): Card | null {
   };
 }
 
-// Seed initial cards if database is empty
-export async function seedInitialCardsIfEmpty(): Promise<void> {
-  const count = await db.cards.count();
-  if (count > 0) return;
-
-  // Check legacy localStorage 'vocab2' or 'vocab1'
+// Purge initial sample cards from IndexedDB if they exist
+export async function removeSampleCards(): Promise<void> {
+  const sampleIds = ['sample-1', 'sample-2', 'sample-3', 'sample-4'];
   try {
+    await db.cards.bulkDelete(sampleIds);
+    const all = await db.cards.toArray();
+    const otherSampleIds = all.filter((c) => c.id.startsWith('sample-')).map((c) => c.id);
+    if (otherSampleIds.length > 0) {
+      await db.cards.bulkDelete(otherSampleIds);
+    }
+  } catch (error) {
+    console.warn('Could not purge sample cards', error);
+  }
+}
+
+// Seed initial cards if database is empty (migrates legacy localStorage if present, no dummy cards)
+export async function seedInitialCardsIfEmpty(): Promise<void> {
+  // Purge sample cards immediately
+  await removeSampleCards();
+
+  try {
+    const count = await db.cards.count();
+    if (count > 0) return;
+
+    // Check legacy localStorage 'vocab2' or 'vocab1'
     const legacy2 = localStorage.getItem('vocab2');
     if (legacy2) {
       const parsed: unknown = JSON.parse(legacy2);
@@ -94,82 +112,8 @@ export async function seedInitialCardsIfEmpty(): Promise<void> {
       }
     }
   } catch (error: unknown) {
-    console.warn('Failed to migrate legacy localStorage data', error);
+    console.warn('Failed to access database or migrate legacy localStorage data', error);
   }
-
-  // Provide initial high-quality sample cards matching specification
-  const sampleCards: Card[] = [
-    {
-      id: 'sample-1',
-      term: 'act',
-      cat: 'Từ đơn',
-      pos: 'v',
-      vi: 'hành động, cư xử',
-      ipa: '/ækt/',
-      en: 'to do something for a particular purpose or in a particular situation',
-      ex: 'We must act before it is too late.',
-      cloze: 'We must ____ before it is too late.',
-      ans: 'act',
-      fam: 'activity (n), active (adj), actively (adv)',
-      box: 0,
-      due: new Date().toISOString(),
-      reviewCount: 0,
-      createdAt: new Date().toISOString(),
-    },
-    {
-      id: 'sample-2',
-      term: 'give up',
-      cat: 'Cụm động từ',
-      pos: 'phrasal verb',
-      vi: 'từ bỏ, buông xuôi',
-      ipa: '/ɡɪv ʌp/',
-      en: 'to stop doing something before you have finished it',
-      ex: 'Never give up on your dreams.',
-      cloze: 'Never ____ on your dreams.',
-      ans: 'give up',
-      fam: '',
-      box: 0,
-      due: new Date().toISOString(),
-      reviewCount: 0,
-      createdAt: new Date().toISOString(),
-    },
-    {
-      id: 'sample-3',
-      term: 'make sb do sth',
-      cat: 'Cấu trúc',
-      pos: 'pattern',
-      vi: 'bắt/khiến ai đó làm việc gì',
-      ipa: '/meɪk/',
-      en: 'to force or cause someone to perform an action',
-      ex: 'The movie made me cry.',
-      cloze: 'The movie made me ____.',
-      ans: 'cry',
-      fam: '',
-      box: 0,
-      due: new Date().toISOString(),
-      reviewCount: 0,
-      createdAt: new Date().toISOString(),
-    },
-    {
-      id: 'sample-4',
-      term: 'break the ice',
-      cat: 'Thành ngữ',
-      pos: 'idiom',
-      vi: 'phá vỡ sự ngại ngùng ban đầu',
-      ipa: '/breɪk ðiː aɪs/',
-      en: 'to say or do something that makes people feel more relaxed',
-      ex: 'He told a joke to break the ice.',
-      cloze: 'He told a joke to ____.',
-      ans: 'break the ice',
-      fam: '',
-      box: 1,
-      due: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-      reviewCount: 1,
-      createdAt: new Date().toISOString(),
-    },
-  ];
-
-  await db.cards.bulkPut(sampleCards);
 }
 
 // Backup & Restore

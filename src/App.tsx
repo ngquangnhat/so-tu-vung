@@ -37,6 +37,7 @@ export const App: React.FC = () => {
   const [activeReviewSession, setActiveReviewSession] = useState<{
     mode: ReviewMode;
     cards: Card[];
+    isFreePractice?: boolean;
   } | null>(null);
 
   // Apply dark mode class to html document
@@ -50,9 +51,11 @@ export const App: React.FC = () => {
     }
   }, [darkMode]);
 
-  // Seed sample cards if first launch
+  // Safely initialize database and ensure sample cards are removed
   useEffect(() => {
-    seedInitialCardsIfEmpty();
+    seedInitialCardsIfEmpty().catch((err: unknown) => {
+      console.error('Failed to initialize database', err);
+    });
   }, []);
 
   // Refresh streak on mount and tab switch
@@ -74,8 +77,8 @@ export const App: React.FC = () => {
   const totalCount = cards.length;
   const masteredCount = cards.filter((card) => card.box >= MASTERED_BOX_THRESHOLD).length;
 
-  const handleStartReview = (mode: ReviewMode, dueCards: Card[]) => {
-    setActiveReviewSession({ mode, cards: dueCards });
+  const handleStartReview = (mode: ReviewMode, reviewCards: Card[], isFreePractice = false) => {
+    setActiveReviewSession({ mode, cards: reviewCards, isFreePractice });
   };
 
   const handleFinishReview = () => {
@@ -104,6 +107,7 @@ export const App: React.FC = () => {
           <ReviewSession
             initialCards={activeReviewSession.cards}
             selectedMode={activeReviewSession.mode}
+            isFreePractice={activeReviewSession.isFreePractice}
             onFinishSession={handleFinishReview}
             onCancel={() => {
               setActiveReviewSession(null);

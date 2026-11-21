@@ -19,7 +19,7 @@ import {
   stripPatternPlaceholders,
 } from '../services/srs';
 import { db } from '../services/db';
-import { speakText, isSpeechRecognitionSupported, createSpeechRecognizer } from '../services/speech';
+import { speakText, stopSpeaking, isSpeechRecognitionSupported, createSpeechRecognizer } from '../services/speech';
 import { evaluateSentence, SentenceEvaluation } from '../services/ai';
 import { playCorrectSound, playWrongSound, playRewardSound } from '../services/sound';
 import { recordStudyActivity } from '../services/streak';
@@ -28,13 +28,35 @@ import type { ISpeechRecognition } from '../types/speech';
 interface ReviewSessionProps {
   initialCards: Card[];
   selectedMode: ReviewMode;
+  isFreePractice?: boolean;
   onFinishSession: () => void;
   onCancel: () => void;
+}
+
+function getClozeData(card?: Card) {
+  if (!card) return { clozeText: '', clozeAns: '', hasCloze: false };
+  let clozeText = card.cloze || '';
+  let clozeAns = card.ans || '';
+
+  // Decouple synthesis: only synthesize clozeText when missing, and only synthesize clozeAns when missing
+  if ((!clozeText || !clozeAns) && card.ex && card.term) {
+    const patternRegex = new RegExp(card.term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+    if (patternRegex.test(card.ex)) {
+      if (!clozeText) {
+        clozeText = card.ex.replace(patternRegex, '____');
+      }
+      if (!clozeAns) {
+        clozeAns = card.term;
+      }
+    }
+  }
+  return { clozeText, clozeAns, hasCloze: Boolean(clozeText && clozeAns) };
 }
 
 export const ReviewSession: React.FC<ReviewSessionProps> = ({
   initialCards,
   selectedMode,
+  isFreePractice = false,
   onFinishSession,
   onCancel,
 }) => {
@@ -98,24 +120,15 @@ export const ReviewSession: React.FC<ReviewSessionProps> = ({
     setAutoGradedResult(null);
     setSessionError(null);
 
-    // Rule: Thẻ chưa ôn lần nào luôn ôn bằng Lật thẻ
-    if (currentCard.reviewCount === 0) {
-      setEffectiveMode('flip');
-      return;
-    }
-
-    const hasSbSth = /\b(sb|sth)\b/i.test(currentCard.term);
-    const hasCloze = Boolean(currentCard.cloze && currentCard.ans);
+    // Determine available modes for this specific card
+    const { hasCloze } = getClozeData(currentCard);
     const speechSupported = isSpeechRecognitionSupported();
 
-    // Determine available modes for this specific card
     const availableModes: ReviewMode[] = ['flip'];
     if (hasCloze) availableModes.push('cloze');
-    if (!hasSbSth) {
-      availableModes.push('listen');
-      if (speechSupported) {
-        availableModes.push('pronounce');
-      }
+    availableModes.push('listen');
+    if (speechSupported) {
+      availableModes.push('pronounce');
     }
     availableModes.push('write');
 
@@ -131,13 +144,14 @@ export const ReviewSession: React.FC<ReviewSessionProps> = ({
     }
   }, [currentCard, selectedMode]);
 
-  // Clean up speech recognition on unmount
+  // Clean up speech recognition & synthesis on unmount
   useEffect(() => {
     return () => {
+      stopSpeaking();
       if (speechRecognizerRef.current) {
         try {
           speechRecognizerRef.current.stop();
-        } catch (_) {}
+        } catch (_) { }
       }
     };
   }, []);
@@ -159,15 +173,21 @@ export const ReviewSession: React.FC<ReviewSessionProps> = ({
     }
 
     try {
-      const { nextBox, nextDueDate } = calculateNextReview(currentCard.box, grade);
       const updatedReviewCount = currentCard.reviewCount + 1;
+      const { nextBox, nextDueDate } = calculateNextReview(currentCard.box, grade);
 
-      // Update in database
-      await db.cards.update(currentCard.id, {
-        box: nextBox,
-        due: nextDueDate.toISOString(),
-        reviewCount: updatedReviewCount,
-      });
+      // In free practice mode, do not mutate SRS box & due intervals to preserve mastery
+      if (isFreePractice) {
+        await db.cards.update(currentCard.id, {
+          reviewCount: updatedReviewCount,
+        });
+      } else {
+        await db.cards.update(currentCard.id, {
+          box: nextBox,
+          due: nextDueDate.toISOString(),
+          reviewCount: updatedReviewCount,
+        });
+      }
 
       // Record daily streak
       recordStudyActivity();
@@ -179,8 +199,8 @@ export const ReviewSession: React.FC<ReviewSessionProps> = ({
           // Re-queue at the end of the session
           nextQueue.push({
             ...currentCard,
-            box: 0,
-            due: nextDueDate.toISOString(),
+            box: isFreePractice ? currentCard.box : 0,
+            due: isFreePractice ? currentCard.due : nextDueDate.toISOString(),
             reviewCount: updatedReviewCount,
           });
         }
@@ -245,9 +265,11 @@ export const ReviewSession: React.FC<ReviewSessionProps> = ({
   // Cloze submit
   const handleClozeSubmit = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    if (!clozeInput.trim() || !currentCard.ans) return;
+    const { clozeAns } = getClozeData(currentCard);
+    const targetAns = clozeAns || currentCard?.ans;
+    if (!clozeInput.trim() || !targetAns) return;
 
-    const isMatch = normalizeAnswer(clozeInput) === normalizeAnswer(currentCard.ans);
+    const isMatch = normalizeAnswer(clozeInput) === normalizeAnswer(targetAns);
     if (isMatch) {
       playCorrectSound();
     } else {
@@ -258,7 +280,7 @@ export const ReviewSession: React.FC<ReviewSessionProps> = ({
       grade: isMatch ? 'good' : 'forgot',
       isCorrect: isMatch,
       userAnswer: clozeInput.trim(),
-      correctAnswer: currentCard.ans,
+      correctAnswer: targetAns,
     });
   };
 
@@ -377,7 +399,9 @@ export const ReviewSession: React.FC<ReviewSessionProps> = ({
         <div className="space-y-2">
           <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Tuyệt Vời! Đã Hoàn Thành Lượt Ôn!</h2>
           <p className="text-sm text-slate-600 dark:text-slate-300">
-            Bạn đã xuất sắc hoàn tất toàn bộ {totalInitialCount} lượt thẻ đến hạn hôm nay.
+            {isFreePractice
+              ? `Bạn đã xuất sắc hoàn tất toàn bộ ${totalInitialCount} từ ôn luyện tự do.`
+              : `Bạn đã xuất sắc hoàn tất toàn bộ ${totalInitialCount} lượt thẻ đến hạn hôm nay.`}
           </p>
         </div>
         <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 flex justify-around text-center">
@@ -388,7 +412,9 @@ export const ReviewSession: React.FC<ReviewSessionProps> = ({
           <div className="border-r border-slate-200 dark:border-slate-700"></div>
           <div>
             <span className="block text-xl font-bold text-emerald-600 dark:text-emerald-400">100%</span>
-            <span className="text-xs text-slate-500 dark:text-slate-400">Mục tiêu hôm nay</span>
+            <span className="text-xs text-slate-500 dark:text-slate-400">
+              {isFreePractice ? 'Hoàn thành' : 'Mục tiêu hôm nay'}
+            </span>
           </div>
         </div>
         <button
@@ -570,7 +596,7 @@ export const ReviewSession: React.FC<ReviewSessionProps> = ({
               </span>
               <p className="text-lg font-bold text-indigo-600 dark:text-indigo-400">{currentCard.vi}</p>
               <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-base font-medium text-slate-900 dark:text-white leading-relaxed">
-                {currentCard.cloze}
+                {getClozeData(currentCard).clozeText || currentCard.cloze}
               </div>
             </div>
 
@@ -591,6 +617,26 @@ export const ReviewSession: React.FC<ReviewSessionProps> = ({
                 >
                   Kiểm tra đáp án (Nhấn Enter)
                 </button>
+
+                <div className="flex justify-center pt-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const { clozeAns } = getClozeData(currentCard);
+                      playWrongSound();
+                      setAutoGradedResult({
+                        grade: 'forgot',
+                        isCorrect: false,
+                        userAnswer: clozeInput.trim() || 'Chưa điền',
+                        correctAnswer: clozeAns || currentCard.ans || currentCard.term,
+                        feedback: 'Bạn đã chọn xem đáp án.',
+                      });
+                    }}
+                    className="text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 underline"
+                  >
+                    Xem đáp án (Bỏ qua)
+                  </button>
+                </div>
               </form>
             )}
           </div>
@@ -613,11 +659,10 @@ export const ReviewSession: React.FC<ReviewSessionProps> = ({
               <div className="space-y-4">
                 <button
                   onClick={handleToggleListening}
-                  className={`w-20 h-20 rounded-full mx-auto flex items-center justify-center transition shadow-lg ${
-                    isListening
-                      ? 'bg-rose-500 text-white animate-pulse shadow-rose-500/30'
-                      : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-600/30'
-                  }`}
+                  className={`w-20 h-20 rounded-full mx-auto flex items-center justify-center transition shadow-lg ${isListening
+                    ? 'bg-rose-500 text-white animate-pulse shadow-rose-500/30'
+                    : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-600/30'
+                    }`}
                 >
                   {isListening ? <MicOff className="w-8 h-8" /> : <Mic className="w-8 h-8" />}
                 </button>
@@ -683,6 +728,25 @@ export const ReviewSession: React.FC<ReviewSessionProps> = ({
                   <Sparkles className={`w-4 h-4 ${isEvaluating ? 'animate-spin' : ''}`} />
                   {isEvaluating ? 'AI đang chấm câu...' : 'Chấm câu với AI'}
                 </button>
+
+                <div className="flex justify-center pt-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      playWrongSound();
+                      setAutoGradedResult({
+                        grade: 'forgot',
+                        isCorrect: false,
+                        userAnswer: userSentence.trim() || 'Đã bỏ qua',
+                        correctAnswer: currentCard.ex || `Ví dụ: Hãy dùng "${currentCard.term}" trong câu.`,
+                        feedback: 'Đã bỏ qua bài viết câu.',
+                      });
+                    }}
+                    className="text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 underline"
+                  >
+                    Bỏ qua bài này (Tính là Quên)
+                  </button>
+                </div>
               </form>
             )}
           </div>
@@ -721,6 +785,25 @@ export const ReviewSession: React.FC<ReviewSessionProps> = ({
                 >
                   Kiểm tra đáp án (Nhấn Enter)
                 </button>
+
+                <div className="flex justify-center pt-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      playWrongSound();
+                      setAutoGradedResult({
+                        grade: 'forgot',
+                        isCorrect: false,
+                        userAnswer: dictationInput.trim() || 'Chưa điền',
+                        correctAnswer: currentCard.term,
+                        feedback: 'Bạn đã chọn xem đáp án.',
+                      });
+                    }}
+                    className="text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 underline"
+                  >
+                    Xem đáp án (Bỏ qua)
+                  </button>
+                </div>
               </form>
             )}
           </div>
@@ -730,11 +813,10 @@ export const ReviewSession: React.FC<ReviewSessionProps> = ({
         {autoGradedResult && (
           <div className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-800 space-y-4 animate-fadeIn">
             <div
-              className={`p-4 rounded-2xl flex items-start gap-3 border ${
-                autoGradedResult.isCorrect
-                  ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-200'
-                  : 'bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-800 text-rose-800 dark:text-rose-200'
-              }`}
+              className={`p-4 rounded-2xl flex items-start gap-3 border ${autoGradedResult.isCorrect
+                ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-200'
+                : 'bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-800 text-rose-800 dark:text-rose-200'
+                }`}
             >
               {autoGradedResult.isCorrect ? (
                 <CheckCircle2 className="w-6 h-6 text-emerald-500 shrink-0 mt-0.5" />
