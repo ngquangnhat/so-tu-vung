@@ -1,4 +1,4 @@
-import { CardCategory, CARD_CATEGORIES, AISettings } from '../types/card';
+import { CardCategory, CARD_CATEGORIES, AISettings, isValidEnglishTermPattern } from '../types/card';
 
 const SETTINGS_KEY = 'vocab_ai_settings';
 
@@ -52,7 +52,13 @@ export interface AnalysisResult {
   ex: string;
   cloze: string;
   ans: string;
+  synonyms: string;
+  antonyms: string;
   fam: string;
+  isValid: boolean;
+  isCorrected?: boolean;
+  correctedFrom?: string;
+  warningMessage?: string;
 }
 
 export interface SentenceEvaluation {
@@ -99,13 +105,21 @@ function validateAndSanitizeAnalysis(parsed: Record<string, unknown> | null, fal
       ex: '',
       cloze: '',
       ans: fallbackTerm,
+      synonyms: '',
+      antonyms: '',
       fam: '',
+      isValid: true,
     };
   }
 
   const term = typeof parsed.term === 'string' && parsed.term.trim() ? parsed.term.trim() : fallbackTerm;
   const ex = typeof parsed.ex === 'string' ? parsed.ex.trim() : '';
   const cloze = typeof parsed.cloze === 'string' ? parsed.cloze.trim() : (ex ? ex.replace(term, '____') : '');
+
+  const isValid = typeof parsed.isValid === 'boolean' ? parsed.isValid : true;
+  const isCorrected = typeof parsed.isCorrected === 'boolean' ? parsed.isCorrected : false;
+  const correctedFrom = typeof parsed.correctedFrom === 'string' ? parsed.correctedFrom.trim() : undefined;
+  const warningMessage = typeof parsed.warningMessage === 'string' ? parsed.warningMessage.trim() : undefined;
 
   return {
     term,
@@ -117,7 +131,13 @@ function validateAndSanitizeAnalysis(parsed: Record<string, unknown> | null, fal
     ex,
     cloze,
     ans: typeof parsed.ans === 'string' ? parsed.ans.trim() : term,
+    synonyms: typeof parsed.synonyms === 'string' ? parsed.synonyms.trim() : '',
+    antonyms: typeof parsed.antonyms === 'string' ? parsed.antonyms.trim() : '',
     fam: typeof parsed.fam === 'string' ? parsed.fam.trim() : '',
+    isValid,
+    isCorrected,
+    correctedFrom,
+    warningMessage,
   };
 }
 
@@ -141,7 +161,7 @@ function validateSentenceEvaluation(parsed: Record<string, unknown> | null, term
 }
 
 /**
- * AI Auto-enrichment for a given term
+ * AI Auto-enrichment for a given term with Linguistic Validation Gate
  */
 export async function analyzeAndAutoFill(inputTerm: string): Promise<AnalysisResult> {
   const settings = getAISettings();
@@ -149,6 +169,7 @@ export async function analyzeAndAutoFill(inputTerm: string): Promise<AnalysisRes
   const isPattern = /\b(sb|sth|somebody|something)\b/i.test(trimmed);
 
   if (!settings.apiKey) {
+    const patternCheck = isValidEnglishTermPattern(trimmed);
     const defaultCat: CardCategory = isPattern ? 'Cấu trúc' : trimmed.includes(' ') ? 'Cụm từ khác' : 'Từ đơn';
     return {
       term: trimmed,
@@ -160,14 +181,31 @@ export async function analyzeAndAutoFill(inputTerm: string): Promise<AnalysisRes
       ex: `I use ${trimmed} every day.`,
       cloze: `I use ____ every day.`,
       ans: trimmed,
+      synonyms: '',
+      antonyms: '',
       fam: '',
+      isValid: patternCheck.isValid,
+      warningMessage: patternCheck.reason,
     };
   }
 
-  const prompt = `Bạn là trợ lý từ điển tiếng Anh cho người Việt học tiếng Anh theo chuẩn Cambridge Learner's Dictionary.
-Hãy phân tích từ/cụm từ/cấu trúc sau: "${trimmed}".
+  const prompt = `Bạn là chuyên gia thẩm định từ điển tiếng Anh cho người Việt học tiếng Anh theo chuẩn Cambridge Learner's Dictionary.
+Hãy thẩm định và phân tích từ/cụm từ/cấu trúc sau: "${trimmed}".
+
+YÊU CẦU ĐẶC BIỆT VỀ KIỂM TRA LỖI VÀ CHÍNH TẢ (Linguistic Validation Gate):
+1. Kiểm tra xem "${trimmed}" có phải từ vựng/cụm từ/cấu trúc tiếng Anh hợp lệ hay không. Nếu chỉ là chuỗi ký tự gõ bừa, vô nghĩa, spam (ví dụ: "asdfgh", "xxyyzz", số linh tinh), hãy đặt "isValid": false và ghi rõ lý do vào "warningMessage".
+2. Nếu người dùng gõ sai chính tả (ví dụ "computr", "recieve"), hãy đặt "isValid": true, "isCorrected": true, "correctedFrom": "${trimmed}", "term": "từ đã sửa chuẩn xác", và "warningMessage": "Đã tự động sửa chính tả từ '${trimmed}' thành '...'".
+3. Phân biệt rõ ràng giữa 3 phần:
+   - "synonyms": Các từ/cụm từ đồng nghĩa (ngăn cách bằng dấu phẩy)
+   - "antonyms": Các từ/cụm từ trái nghĩa (ngăn cách bằng dấu phẩy)
+   - "fam": Họ từ (Word Family) liệt kê các dạng từ loại khác (danh/động/tính/trạng từ), ví dụ: "act (v), active (adj), action (n)"
+
 Yêu cầu trả về DUY NHẤT một chuỗi JSON thuần túy (không bọc trong \`\`\`json markdown), với cấu trúc sau:
 {
+  "isValid": true,
+  "isCorrected": false,
+  "correctedFrom": "${trimmed}",
+  "warningMessage": "để trống nếu từ chuẩn, hoặc ghi chú nếu có cảnh báo chính tả/ngữ pháp",
   "term": "từ đã sửa lỗi chính tả nếu có, giữ nguyên sb/sth với cấu trúc",
   "cat": "chọn chính xác một trong 6 loại: Từ đơn | Cụm động từ | Cấu trúc | Thành ngữ | Collocation | Cụm từ khác",
   "pos": "từ loại (v, n, adj, adv, phrasal verb, idiom, pattern...)",
@@ -177,6 +215,8 @@ Yêu cầu trả về DUY NHẤT một chuỗi JSON thuần túy (không bọc t
   "ex": "một câu ví dụ ngắn, đơn giản dưới 10 từ có dùng từ này",
   "cloze": "câu ví dụ trên nhưng thay đúng từ đó bằng ____",
   "ans": "chính xác phần từ được thay bằng ____",
+  "synonyms": "từ đồng nghĩa (vd: fast, rapid, speedy)",
+  "antonyms": "từ trái nghĩa (vd: slow, sluggish)",
   "fam": "họ từ nếu có, ví dụ: act (v), active (adj), activity (n)"
 }`;
 

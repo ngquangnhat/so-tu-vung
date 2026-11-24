@@ -496,6 +496,7 @@ export const ReviewSession: React.FC<ReviewSessionProps> = ({
                 )}
                 <button
                   onClick={() => speakText(currentCard.term)}
+                  aria-label="Nghe phát âm từ vựng"
                   className="p-1.5 rounded-lg text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/50"
                 >
                   <Volume2 className="w-5 h-5" />
@@ -512,8 +513,20 @@ export const ReviewSession: React.FC<ReviewSessionProps> = ({
                   {currentCard.ex && (
                     <p className="text-xs italic text-slate-500 dark:text-slate-400">Ví dụ: {currentCard.ex}</p>
                   )}
+                  {currentCard.synonyms && (
+                    <p className="text-xs text-emerald-600 dark:text-emerald-400">
+                      <strong>Đồng nghĩa:</strong> {currentCard.synonyms}
+                    </p>
+                  )}
+                  {currentCard.antonyms && (
+                    <p className="text-xs text-rose-600 dark:text-rose-400">
+                      <strong>Trái nghĩa:</strong> {currentCard.antonyms}
+                    </p>
+                  )}
                   {currentCard.fam && (
-                    <p className="text-xs text-slate-500 dark:text-slate-400">Họ từ: {currentCard.fam}</p>
+                    <p className="text-xs text-indigo-600 dark:text-indigo-400">
+                      <strong>Họ từ:</strong> {currentCard.fam}
+                    </p>
                   )}
                 </div>
               )}

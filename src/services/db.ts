@@ -51,6 +51,8 @@ function sanitizeCardRecord(record: unknown): Card | null {
     ex: typeof record.ex === 'string' ? record.ex.trim() : '',
     cloze: typeof record.cloze === 'string' ? record.cloze.trim() : '',
     ans: typeof record.ans === 'string' ? record.ans.trim() : '',
+    synonyms: typeof record.synonyms === 'string' ? record.synonyms.trim() : '',
+    antonyms: typeof record.antonyms === 'string' ? record.antonyms.trim() : '',
     fam: typeof record.fam === 'string' ? record.fam.trim() : '',
     box: boxNumber,
     due: typeof record.due === 'string' ? record.due : new Date().toISOString(),

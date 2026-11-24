@@ -176,7 +176,9 @@ export const App: React.FC = () => {
 
             {activeTab === 'add' && (
               <AddCardTab
-                onCardAdded={() => setActiveTab('review')}
+                onCardAdded={() => {
+                  /* Stay on AddCardTab for continuous entry */
+                }}
                 onOpenSettings={() => setIsSettingsOpen(true)}
               />
             )}

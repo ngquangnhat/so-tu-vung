@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
-import { Sparkles, PlusCircle, Check, AlertCircle, HelpCircle, Volume2 } from 'lucide-react';
-import { CardCategory, CARD_CATEGORIES, Card, getErrorMessage } from '../types/card';
+import React, { useState, useRef, useEffect } from 'react';
+import { Sparkles, PlusCircle, Check, AlertCircle, HelpCircle, Volume2, ShieldAlert, AlertTriangle } from 'lucide-react';
+import { CardCategory, CARD_CATEGORIES, Card, getErrorMessage, isValidEnglishTermPattern } from '../types/card';
 import { analyzeAndAutoFill } from '../services/ai';
 import { db } from '../services/db';
 import { speakText } from '../services/speech';
@@ -10,7 +10,29 @@ interface AddCardTabProps {
   onOpenSettings: () => void;
 }
 
+interface ValidationInfo {
+  validatedTerm: string;
+  isValid: boolean;
+  isCorrected?: boolean;
+  correctedFrom?: string;
+  warningMessage?: string;
+}
+
+const INPUT_AUTOFOCUS_DELAY_MS = 50;
+
 export const AddCardTab: React.FC<AddCardTabProps> = ({ onCardAdded, onOpenSettings }) => {
+  const termInputRef = useRef<HTMLInputElement>(null);
+  const autofocusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (autofocusTimerRef.current) {
+        clearTimeout(autofocusTimerRef.current);
+        autofocusTimerRef.current = null;
+      }
+    };
+  }, []);
+
   const [term, setTerm] = useState('');
   const [cat, setCat] = useState<CardCategory>('Từ đơn');
   const [pos, setPos] = useState('');
@@ -20,10 +42,14 @@ export const AddCardTab: React.FC<AddCardTabProps> = ({ onCardAdded, onOpenSetti
   const [ex, setEx] = useState('');
   const [cloze, setCloze] = useState('');
   const [ans, setAns] = useState('');
+  const [synonyms, setSynonyms] = useState('');
+  const [antonyms, setAntonyms] = useState('');
   const [fam, setFam] = useState('');
 
+  const [validationInfo, setValidationInfo] = useState<ValidationInfo | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [notification, setNotification] = useState<{ type: 'success' | 'error' | 'warning'; message: string } | null>(null);
 
   const handleAutoFill = async () => {
     if (!term.trim()) {
@@ -33,6 +59,7 @@ export const AddCardTab: React.FC<AddCardTabProps> = ({ onCardAdded, onOpenSetti
 
     setIsAnalyzing(true);
     setNotification(null);
+    setValidationInfo(null);
 
     try {
       const res = await analyzeAndAutoFill(term.trim());
@@ -45,15 +72,36 @@ export const AddCardTab: React.FC<AddCardTabProps> = ({ onCardAdded, onOpenSetti
       setEx(res.ex);
       setCloze(res.cloze);
       setAns(res.ans);
-      setFam(res.fam);
+      setSynonyms(res.synonyms || '');
+      setAntonyms(res.antonyms || '');
+      setFam(res.fam || '');
 
-      if (!res.vi) {
+      const vInfo: ValidationInfo = {
+        validatedTerm: res.term,
+        isValid: res.isValid,
+        isCorrected: res.isCorrected,
+        correctedFrom: res.correctedFrom,
+        warningMessage: res.warningMessage,
+      };
+      setValidationInfo(vInfo);
+
+      if (!res.isValid) {
+        setNotification({
+          type: 'error',
+          message: res.warningMessage || 'Cảnh báo: Chuỗi ký tự này không phải từ vựng/cấu trúc hợp lệ trong tiếng Anh!',
+        });
+      } else if (res.isCorrected) {
+        setNotification({
+          type: 'warning',
+          message: `Đã tự động sửa chính tả: "${res.correctedFrom}" ➔ "${res.term}". Vui lòng kiểm tra lại!`,
+        });
+      } else if (!res.vi) {
         setNotification({
           type: 'error',
           message: 'AI chưa cấu hình API Key. Bạn có thể tự điền các ô bên dưới hoặc vào Cài đặt để thêm API Key.',
         });
       } else {
-        setNotification({ type: 'success', message: 'AI đã tự điền thông tin đầy đủ. Hãy kiểm tra lại trước khi lưu!' });
+        setNotification({ type: 'success', message: 'AI đã thẩm định từ vựng và tự điền đầy đủ. Hãy kiểm tra lại trước khi lưu!' });
       }
     } catch (error: unknown) {
       setNotification({
@@ -67,6 +115,7 @@ export const AddCardTab: React.FC<AddCardTabProps> = ({ onCardAdded, onOpenSetti
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSaving) return;
 
     const trimmedTerm = term.trim();
     const trimmedVi = vi.trim();
@@ -75,6 +124,29 @@ export const AddCardTab: React.FC<AddCardTabProps> = ({ onCardAdded, onOpenSetti
       setNotification({
         type: 'error',
         message: 'Bắt buộc phải có "Từ vựng" và "Nghĩa tiếng Việt" mới được lưu vào sổ.',
+      });
+      return;
+    }
+
+    // Deterministic client-side linguistic validation gate
+    const patternCheck = isValidEnglishTermPattern(trimmedTerm);
+    if (!patternCheck.isValid) {
+      setNotification({
+        type: 'error',
+        message: patternCheck.reason || 'Từ vựng không hợp lệ theo chuẩn tiếng Anh.',
+      });
+      return;
+    }
+
+    // AI validation gate check if term matches validation metadata
+    if (
+      validationInfo &&
+      validationInfo.validatedTerm.toLowerCase() === trimmedTerm.toLowerCase() &&
+      !validationInfo.isValid
+    ) {
+      setNotification({
+        type: 'error',
+        message: 'Không thể lưu vì AI xác định đây không phải từ vựng/cấu trúc hợp lệ. Hãy chỉnh sửa lại từ vựng.',
       });
       return;
     }
@@ -102,6 +174,8 @@ export const AddCardTab: React.FC<AddCardTabProps> = ({ onCardAdded, onOpenSetti
       ex: ex.trim(),
       cloze: finalCloze,
       ans: finalAns,
+      synonyms: synonyms.trim(),
+      antonyms: antonyms.trim(),
       fam: fam.trim(),
       box: 0, // Cấp 0 ban đầu
       due: new Date().toISOString(), // Đến hạn ngay
@@ -109,11 +183,15 @@ export const AddCardTab: React.FC<AddCardTabProps> = ({ onCardAdded, onOpenSetti
       createdAt: new Date().toISOString(),
     };
 
+    setIsSaving(true);
     try {
       await db.cards.add(newCard);
-      setNotification({ type: 'success', message: `Đã lưu thẻ "${trimmedTerm}" vào sổ ở Cấp 0 (Đến hạn hôm nay)!` });
+      setNotification({
+        type: 'success',
+        message: `Đã lưu thành công "${trimmedTerm}" vào Cấp 0 (Đến hạn ngay)! Sẵn sàng nhập từ tiếp theo.`,
+      });
 
-      // Reset form
+      // Reset form and maintain continuous input flow
       setTerm('');
       setCat('Từ đơn');
       setPos('');
@@ -123,13 +201,29 @@ export const AddCardTab: React.FC<AddCardTabProps> = ({ onCardAdded, onOpenSetti
       setEx('');
       setCloze('');
       setAns('');
+      setSynonyms('');
+      setAntonyms('');
       setFam('');
+      setValidationInfo(null);
 
+      // Notify parent & keep focus on term input safely
       onCardAdded();
+      if (autofocusTimerRef.current) {
+        clearTimeout(autofocusTimerRef.current);
+      }
+      autofocusTimerRef.current = setTimeout(() => {
+        termInputRef.current?.focus();
+        autofocusTimerRef.current = null;
+      }, INPUT_AUTOFOCUS_DELAY_MS);
     } catch (error: unknown) {
       setNotification({ type: 'error', message: 'Không thể lưu thẻ: ' + getErrorMessage(error) });
+    } finally {
+      setIsSaving(false);
     }
   };
+
+  const isCurrentTermValidated =
+    validationInfo && validationInfo.validatedTerm.toLowerCase() === term.trim().toLowerCase();
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
@@ -142,7 +236,7 @@ export const AddCardTab: React.FC<AddCardTabProps> = ({ onCardAdded, onOpenSetti
               Thêm Thẻ Từ Vựng Mới
             </h2>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              Nhập từ, cụm từ, thành ngữ hoặc cấu trúc, sau đó bấm AI tự điền để tiết kiệm thời gian.
+              Nhập từ, cụm từ, thành ngữ hoặc cấu trúc, sau đó bấm AI tự điền để thẩm định và tiết kiệm thời gian.
             </p>
           </div>
           <button
@@ -157,10 +251,20 @@ export const AddCardTab: React.FC<AddCardTabProps> = ({ onCardAdded, onOpenSetti
         <div className="flex flex-col sm:flex-row gap-3">
           <div className="relative flex-1">
             <input
+              ref={termInputRef}
               type="text"
               placeholder="Nhập từ, cụm từ hoặc cấu trúc (vd: act, give up, make sb do sth)..."
               value={term}
-              onChange={(e) => setTerm(e.target.value)}
+              onChange={(e) => {
+                setTerm(e.target.value);
+                // Systemic fix [CLUSTER-01]: reset validation state on input mutation
+                if (validationInfo) {
+                  setValidationInfo(null);
+                }
+                if (notification?.type === 'error' || notification?.type === 'warning') {
+                  setNotification(null);
+                }
+              }}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
                   e.preventDefault();
@@ -172,8 +276,9 @@ export const AddCardTab: React.FC<AddCardTabProps> = ({ onCardAdded, onOpenSetti
             {term.trim() && (
               <button
                 type="button"
-                onClick={() => speakText(term)}
-                title="Nghe phát âm thử"
+                onClick={() => speakText(term.trim())}
+                title="Nghe phát âm chuẩn (US)"
+                aria-label="Nghe phát âm chuẩn (US)"
                 className="absolute right-3 top-3 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition"
               >
                 <Volume2 className="w-4 h-4" />
@@ -187,20 +292,47 @@ export const AddCardTab: React.FC<AddCardTabProps> = ({ onCardAdded, onOpenSetti
             className="px-5 py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white font-medium text-sm shadow-md shadow-indigo-500/20 disabled:opacity-50 transition flex items-center justify-center gap-2 shrink-0"
           >
             <Sparkles className={`w-4 h-4 ${isAnalyzing ? 'animate-spin' : ''}`} />
-            {isAnalyzing ? 'Đang phân tích...' : 'Phân tích & Tự điền'}
+            {isAnalyzing ? 'Đang thẩm định...' : 'Phân tích & Tự điền'}
           </button>
         </div>
+
+        {/* Validation Gate Diagnostic Callout (Only for current validated term) */}
+        {isCurrentTermValidated && !validationInfo.isValid && (
+          <div className="mt-3 p-3 rounded-xl bg-rose-50 dark:bg-rose-950/50 border border-rose-300 dark:border-rose-900 text-rose-700 dark:text-rose-300 flex items-start gap-2 text-xs">
+            <ShieldAlert className="w-4 h-4 shrink-0 text-rose-600 mt-0.5" />
+            <div>
+              <p className="font-bold">Linguistic Validation Gate: Cảnh báo từ không hợp lệ</p>
+              <p className="mt-0.5">{validationInfo.warningMessage || 'Từ hoặc cụm từ này không tồn tại trong từ điển tiếng Anh chuẩn.'}</p>
+            </div>
+          </div>
+        )}
+
+        {isCurrentTermValidated && validationInfo.isCorrected && (
+          <div className="mt-3 p-3 rounded-xl bg-amber-50 dark:bg-amber-950/50 border border-amber-300 dark:border-amber-900 text-amber-800 dark:text-amber-300 flex items-start gap-2 text-xs">
+            <AlertTriangle className="w-4 h-4 shrink-0 text-amber-600 mt-0.5" />
+            <div>
+              <p className="font-bold">Linguistic Validation Gate: Tự động sửa lỗi chính tả</p>
+              <p className="mt-0.5">
+                Từ gốc <span className="line-through font-mono">"{validationInfo.correctedFrom}"</span> đã được sửa thành chuẩn <span className="font-bold font-mono">"{term}"</span>. {validationInfo.warningMessage}
+              </p>
+            </div>
+          </div>
+        )}
 
         {notification && (
           <div
             className={`mt-4 p-3 rounded-xl flex items-center gap-2 text-xs font-medium animate-fadeIn ${
               notification.type === 'success'
                 ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
+                : notification.type === 'warning'
+                ? 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800'
                 : 'bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800'
             }`}
           >
             {notification.type === 'success' ? (
               <Check className="w-4 h-4 text-emerald-500 shrink-0" />
+            ) : notification.type === 'warning' ? (
+              <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0" />
             ) : (
               <AlertCircle className="w-4 h-4 text-rose-500 shrink-0" />
             )}
@@ -268,11 +400,25 @@ export const AddCardTab: React.FC<AddCardTabProps> = ({ onCardAdded, onOpenSetti
             />
           </div>
 
-          {/* Phiên âm IPA */}
+          {/* Phiên âm IPA với nút nghe âm thanh duy nhất [CLUSTER-06] */}
           <div>
-            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-              Phát âm (IPA)
-            </label>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                Phát âm (IPA)
+              </label>
+              {term.trim() && (
+                <button
+                  type="button"
+                  onClick={() => speakText(term.trim())}
+                  className="text-xs text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 flex items-center gap-1 font-medium transition"
+                  title="Nghe phát âm chuẩn (US)"
+                  aria-label="Nghe phát âm chuẩn (US)"
+                >
+                  <Volume2 className="w-3.5 h-3.5" />
+                  <span>Nghe phát âm chuẩn</span>
+                </button>
+              )}
+            </div>
             <input
               type="text"
               placeholder="vd: /ˈæk.tɪv/"
@@ -339,28 +485,72 @@ export const AddCardTab: React.FC<AddCardTabProps> = ({ onCardAdded, onOpenSetti
           </div>
         </div>
 
-        {/* Họ từ */}
-        <div>
-          <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-            Họ từ (Word Family)
-          </label>
-          <input
-            type="text"
-            placeholder="Ví dụ: activity (n), active (adj), actively (adv)"
-            value={fam}
-            onChange={(e) => setFam(e.target.value)}
-            className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
-          />
+        {/* 3 Mục: Đồng nghĩa, Trái nghĩa & Họ từ */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-1">
+          {/* Từ đồng nghĩa */}
+          <div>
+            <label className="block text-xs font-semibold text-emerald-700 dark:text-emerald-400 mb-1.5">
+              Từ đồng nghĩa (Synonyms)
+            </label>
+            <input
+              type="text"
+              placeholder="vd: fast, rapid, speedy"
+              value={synonyms}
+              onChange={(e) => setSynonyms(e.target.value)}
+              className="w-full px-3.5 py-2.5 rounded-xl border border-emerald-200 dark:border-emerald-900/60 bg-emerald-50/30 dark:bg-emerald-950/20 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            />
+          </div>
+
+          {/* Từ trái nghĩa */}
+          <div>
+            <label className="block text-xs font-semibold text-rose-700 dark:text-rose-400 mb-1.5">
+              Từ trái nghĩa (Antonyms)
+            </label>
+            <input
+              type="text"
+              placeholder="vd: slow, sluggish"
+              value={antonyms}
+              onChange={(e) => setAntonyms(e.target.value)}
+              className="w-full px-3.5 py-2.5 rounded-xl border border-rose-200 dark:border-rose-900/60 bg-rose-50/30 dark:bg-rose-950/20 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-rose-500"
+            />
+          </div>
+
+          {/* Họ từ */}
+          <div>
+            <label className="block text-xs font-semibold text-indigo-700 dark:text-indigo-400 mb-1.5">
+              Họ từ (Word Family)
+            </label>
+            <input
+              type="text"
+              placeholder="vd: act (v), active (adj), action (n)"
+              value={fam}
+              onChange={(e) => setFam(e.target.value)}
+              className="w-full px-3.5 py-2.5 rounded-xl border border-indigo-200 dark:border-indigo-900/60 bg-indigo-50/30 dark:bg-indigo-950/20 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+          </div>
         </div>
 
-        {/* Save button */}
-        <div className="pt-2 flex justify-end">
+        {/* Save button with concurrency protection [CLUSTER-02] */}
+        <div className="pt-2 flex items-center justify-between">
+          <p className="text-xs text-slate-400 hidden sm:block">
+            Mẹo: Sau khi lưu, bạn sẽ ở lại trang này để nhập liên tục từ tiếp theo.
+          </p>
           <button
             type="submit"
-            className="px-6 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm shadow-md shadow-indigo-600/20 transition flex items-center gap-2"
+            disabled={isSaving}
+            className="w-full sm:w-auto px-6 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm shadow-md shadow-indigo-600/20 transition flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
           >
-            <Check className="w-4 h-4" />
-            Lưu vào sổ (Cấp 0 - Đến hạn ngay)
+            {isSaving ? (
+              <>
+                <Sparkles className="w-4 h-4 animate-spin" />
+                <span>Đang lưu...</span>
+              </>
+            ) : (
+              <>
+                <Check className="w-4 h-4" />
+                <span>Lưu vào sổ (Cấp 0 - Đến hạn ngay)</span>
+              </>
+            )}
           </button>
         </div>
       </form>

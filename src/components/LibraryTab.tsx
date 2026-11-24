@@ -9,6 +9,8 @@ interface LibraryTabProps {
   onCardDeleted: () => void;
 }
 
+const DELETE_CONFIRMATION_TIMEOUT_MS = 4000;
+
 export const LibraryTab: React.FC<LibraryTabProps> = ({ cards, onCardDeleted }) => {
   const [search, setSearch] = useState('');
   const [selectedCat, setSelectedCat] = useState<string>('all');
@@ -35,6 +37,8 @@ export const LibraryTab: React.FC<LibraryTabProps> = ({ cards, onCardDeleted }) 
   const [editEx, setEditEx] = useState('');
   const [editCloze, setEditCloze] = useState('');
   const [editAns, setEditAns] = useState('');
+  const [editSynonyms, setEditSynonyms] = useState('');
+  const [editAntonyms, setEditAntonyms] = useState('');
   const [editFam, setEditFam] = useState('');
   const [editError, setEditError] = useState<string | null>(null);
 
@@ -49,6 +53,8 @@ export const LibraryTab: React.FC<LibraryTabProps> = ({ cards, onCardDeleted }) 
         const matchSearch =
           card.term.toLowerCase().includes(query) ||
           card.vi.toLowerCase().includes(query) ||
+          (card.synonyms && card.synonyms.toLowerCase().includes(query)) ||
+          (card.antonyms && card.antonyms.toLowerCase().includes(query)) ||
           (card.fam && card.fam.toLowerCase().includes(query)) ||
           (card.en && card.en.toLowerCase().includes(query));
 
@@ -81,7 +87,7 @@ export const LibraryTab: React.FC<LibraryTabProps> = ({ cards, onCardDeleted }) 
       deleteTimerRef.current = setTimeout(() => {
         setConfirmDeleteId(null);
         deleteTimerRef.current = null;
-      }, 4000);
+      }, DELETE_CONFIRMATION_TIMEOUT_MS);
     }
   };
 
@@ -96,6 +102,8 @@ export const LibraryTab: React.FC<LibraryTabProps> = ({ cards, onCardDeleted }) 
     setEditEx(card.ex || '');
     setEditCloze(card.cloze || '');
     setEditAns(card.ans || '');
+    setEditSynonyms(card.synonyms || '');
+    setEditAntonyms(card.antonyms || '');
     setEditFam(card.fam || '');
     setEditError(null);
   };
@@ -120,6 +128,8 @@ export const LibraryTab: React.FC<LibraryTabProps> = ({ cards, onCardDeleted }) 
         ex: editEx.trim(),
         cloze: editCloze.trim(),
         ans: editAns.trim(),
+        synonyms: editSynonyms.trim(),
+        antonyms: editAntonyms.trim(),
         fam: editFam.trim(),
       });
       setEditingCard(null);
@@ -274,7 +284,7 @@ export const LibraryTab: React.FC<LibraryTabProps> = ({ cards, onCardDeleted }) 
               </div>
 
               {/* Extra details */}
-              {(card.en || card.ex || card.fam) && (
+              {(card.en || card.ex || card.synonyms || card.antonyms || card.fam) && (
                 <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80 space-y-1.5 text-xs text-slate-600 dark:text-slate-300">
                   {card.en && (
                     <p>
@@ -286,9 +296,19 @@ export const LibraryTab: React.FC<LibraryTabProps> = ({ cards, onCardDeleted }) 
                       <strong className="not-italic text-slate-700 dark:text-slate-200">Ví dụ:</strong> "{card.ex}"
                     </p>
                   )}
+                  {card.synonyms && (
+                    <p>
+                      <strong className="text-emerald-600 dark:text-emerald-400">Đồng nghĩa:</strong> {card.synonyms}
+                    </p>
+                  )}
+                  {card.antonyms && (
+                    <p>
+                      <strong className="text-rose-600 dark:text-rose-400">Trái nghĩa:</strong> {card.antonyms}
+                    </p>
+                  )}
                   {card.fam && (
                     <p>
-                      <strong className="text-slate-700 dark:text-slate-200">Họ từ:</strong> {card.fam}
+                      <strong className="text-indigo-600 dark:text-indigo-400">Họ từ:</strong> {card.fam}
                     </p>
                   )}
                 </div>
@@ -450,15 +470,43 @@ export const LibraryTab: React.FC<LibraryTabProps> = ({ cards, onCardDeleted }) 
                 </div>
               </div>
 
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-emerald-700 dark:text-emerald-400 mb-1">
+                    Từ đồng nghĩa (Synonyms)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="vd: fast, rapid, speedy"
+                    value={editSynonyms}
+                    onChange={(e) => setEditSynonyms(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-emerald-200 dark:border-emerald-900/60 bg-emerald-50/20 dark:bg-emerald-950/20 text-xs text-slate-900 dark:text-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-rose-700 dark:text-rose-400 mb-1">
+                    Từ trái nghĩa (Antonyms)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="vd: slow, sluggish"
+                    value={editAntonyms}
+                    onChange={(e) => setEditAntonyms(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-rose-200 dark:border-rose-900/60 bg-rose-50/20 dark:bg-rose-950/20 text-xs text-slate-900 dark:text-white"
+                  />
+                </div>
+              </div>
+
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                <label className="block text-xs font-semibold text-indigo-700 dark:text-indigo-400 mb-1">
                   Họ từ (Word family)
                 </label>
                 <input
                   type="text"
+                  placeholder="vd: act (v), active (adj), action (n)"
                   value={editFam}
                   onChange={(e) => setEditFam(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs text-slate-900 dark:text-white"
+                  className="w-full px-3 py-2 rounded-xl border border-indigo-200 dark:border-indigo-900/60 bg-indigo-50/20 dark:bg-indigo-950/20 text-xs text-slate-900 dark:text-white"
                 />
               </div>
 

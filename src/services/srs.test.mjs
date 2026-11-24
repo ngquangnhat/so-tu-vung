@@ -8,7 +8,7 @@ import {
   stripPatternPlaceholders,
   getPreviewIntervalText,
 } from './srs.ts';
-import { MASTERED_BOX_THRESHOLD, MAX_SPEECH_ATTEMPTS } from '../types/card.ts';
+import { MASTERED_BOX_THRESHOLD, MAX_SPEECH_ATTEMPTS, isValidEnglishTermPattern } from '../types/card.ts';
 
 console.log('--- RUNNING ENHANCED SRS UNIT TESTS ---');
 
@@ -98,4 +98,20 @@ const baseDate = new Date(2026, 10, 19, 10, 0, 0);
   console.log('✓ Test 9: Constants verified');
 }
 
-console.log('--- ALL 9 SRS UNIT TESTS PASSED SUCCESSFULLY! ---');
+// 10. Linguistic Validation Gate (isValidEnglishTermPattern)
+{
+  assert.strictEqual(isValidEnglishTermPattern('act').isValid, true);
+  assert.strictEqual(isValidEnglishTermPattern('give up').isValid, true);
+  assert.strictEqual(isValidEnglishTermPattern('make sb do sth').isValid, true);
+  assert.strictEqual(isValidEnglishTermPattern('break the ice').isValid, true);
+
+  // Invalid patterns
+  assert.strictEqual(isValidEnglishTermPattern('').isValid, false);
+  assert.strictEqual(isValidEnglishTermPattern('   ').isValid, false);
+  assert.strictEqual(isValidEnglishTermPattern('123456789').isValid, false);
+  assert.strictEqual(isValidEnglishTermPattern('!@#$%^&*()').isValid, false);
+  assert.strictEqual(isValidEnglishTermPattern('a'.repeat(40)).isValid, false);
+  console.log('✓ Test 10: isValidEnglishTermPattern passed');
+}
+
+console.log('--- ALL 10 SRS & VALIDATION UNIT TESTS PASSED SUCCESSFULLY! ---');
