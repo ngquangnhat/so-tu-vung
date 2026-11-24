@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { Search, Volume2, Trash2, Calendar, Sparkles, Filter, Edit3, X, Check } from 'lucide-react';
-import { Card, CardCategory, CARD_CATEGORIES, getErrorMessage } from '../types/card';
+import { Search, Volume2, Trash2, Calendar, Sparkles, Filter, Edit3, X, Check, Bookmark } from 'lucide-react';
+import { Card, CardCategory, CARD_CATEGORIES, PRESET_TOPICS, getErrorMessage } from '../types/card';
 import { db } from '../services/db';
 import { speakText } from '../services/speech';
 
@@ -14,6 +14,7 @@ const DELETE_CONFIRMATION_TIMEOUT_MS = 4000;
 export const LibraryTab: React.FC<LibraryTabProps> = ({ cards, onCardDeleted }) => {
   const [search, setSearch] = useState('');
   const [selectedCat, setSelectedCat] = useState<string>('all');
+  const [selectedTopic, setSelectedTopic] = useState<string>('all');
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const deleteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -30,6 +31,7 @@ export const LibraryTab: React.FC<LibraryTabProps> = ({ cards, onCardDeleted }) 
   const [editingCard, setEditingCard] = useState<Card | null>(null);
   const [editTerm, setEditTerm] = useState('');
   const [editCat, setEditCat] = useState<CardCategory>('Từ đơn');
+  const [editTopic, setEditTopic] = useState('Chung');
   const [editPos, setEditPos] = useState('');
   const [editVi, setEditVi] = useState('');
   const [editIpa, setEditIpa] = useState('');
@@ -47,8 +49,9 @@ export const LibraryTab: React.FC<LibraryTabProps> = ({ cards, onCardDeleted }) 
     return [...cards]
       .filter((card) => {
         const matchCat = selectedCat === 'all' || card.cat === selectedCat;
+        const matchTopic = selectedTopic === 'all' || (card.topic || 'Chung') === selectedTopic;
         const query = search.trim().toLowerCase();
-        if (!query) return matchCat;
+        if (!query) return matchCat && matchTopic;
 
         const matchSearch =
           card.term.toLowerCase().includes(query) ||
@@ -56,18 +59,27 @@ export const LibraryTab: React.FC<LibraryTabProps> = ({ cards, onCardDeleted }) 
           (card.synonyms && card.synonyms.toLowerCase().includes(query)) ||
           (card.antonyms && card.antonyms.toLowerCase().includes(query)) ||
           (card.fam && card.fam.toLowerCase().includes(query)) ||
+          ((card.topic || 'Chung').toLowerCase().includes(query)) ||
           (card.en && card.en.toLowerCase().includes(query));
 
-        return matchCat && matchSearch;
+        return matchCat && matchTopic && matchSearch;
       })
       .sort((cardA, cardB) => new Date(cardB.createdAt || 0).getTime() - new Date(cardA.createdAt || 0).getTime());
-  }, [cards, selectedCat, search]);
+  }, [cards, selectedCat, selectedTopic, search]);
 
-  // Count by category
+  // Count by category & topic
   const countsByCat = useMemo(() => {
     const counts: Record<string, number> = { all: cards.length };
     CARD_CATEGORIES.forEach((category) => {
       counts[category] = cards.filter((card) => card.cat === category).length;
+    });
+    return counts;
+  }, [cards]);
+
+  const countsByTopic = useMemo(() => {
+    const counts: Record<string, number> = { all: cards.length };
+    PRESET_TOPICS.forEach((top) => {
+      counts[top] = cards.filter((card) => (card.topic || 'Chung') === top).length;
     });
     return counts;
   }, [cards]);
@@ -95,6 +107,7 @@ export const LibraryTab: React.FC<LibraryTabProps> = ({ cards, onCardDeleted }) 
     setEditingCard(card);
     setEditTerm(card.term);
     setEditCat(card.cat);
+    setEditTopic(card.topic || 'Chung');
     setEditPos(card.pos || '');
     setEditVi(card.vi);
     setEditIpa(card.ipa || '');
@@ -121,6 +134,7 @@ export const LibraryTab: React.FC<LibraryTabProps> = ({ cards, onCardDeleted }) 
       await db.cards.update(editingCard.id, {
         term: editTerm.trim(),
         cat: editCat,
+        topic: editTopic.trim() || 'Chung',
         pos: editPos.trim(),
         vi: editVi.trim(),
         ipa: editIpa.trim(),
@@ -196,6 +210,34 @@ export const LibraryTab: React.FC<LibraryTabProps> = ({ cards, onCardDeleted }) 
               }`}
             >
               {category} <span className="opacity-75 font-bold">({countsByCat[category] || 0})</span>
+            </button>
+          ))}
+        </div>
+
+        {/* Topic Filter Pills */}
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs no-scrollbar pt-2 border-t border-slate-100 dark:border-slate-800/80">
+          <Bookmark className="w-3.5 h-3.5 text-slate-400 shrink-0 mr-1" />
+          <button
+            onClick={() => setSelectedTopic('all')}
+            className={`px-2.5 py-1 rounded-lg font-medium shrink-0 transition flex items-center gap-1 text-[11px] ${
+              selectedTopic === 'all'
+                ? 'bg-violet-600 text-white shadow-sm'
+                : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+            }`}
+          >
+            Tất cả chủ đề <span className="opacity-75 font-bold">({countsByTopic.all})</span>
+          </button>
+          {PRESET_TOPICS.map((top) => (
+            <button
+              key={top}
+              onClick={() => setSelectedTopic(top)}
+              className={`px-2.5 py-1 rounded-lg font-medium shrink-0 transition flex items-center gap-1 text-[11px] ${
+                selectedTopic === top
+                  ? 'bg-violet-600 text-white shadow-sm'
+                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+              }`}
+            >
+              {top} <span className="opacity-75 font-bold">({countsByTopic[top] || 0})</span>
             </button>
           ))}
         </div>
@@ -314,11 +356,16 @@ export const LibraryTab: React.FC<LibraryTabProps> = ({ cards, onCardDeleted }) 
                 </div>
               )}
 
-              {/* Footer: Due date info & Category */}
+              {/* Footer: Due date info & Category & Topic */}
               <div className="flex items-center justify-between text-[11px] text-slate-400 pt-1">
-                <span className="px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800/60 font-medium">
-                  {card.cat}
-                </span>
+                <div className="flex items-center gap-1.5">
+                  <span className="px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800/60 font-medium text-slate-600 dark:text-slate-300">
+                    {card.cat}
+                  </span>
+                  <span className="px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 font-medium">
+                    {card.topic || 'Chung'}
+                  </span>
+                </div>
                 <span className="flex items-center gap-1">
                   <Calendar className="w-3 h-3" />
                   Ôn tiếp: {new Date(card.due).toLocaleDateString('vi-VN')}
@@ -379,7 +426,7 @@ export const LibraryTab: React.FC<LibraryTabProps> = ({ cards, onCardDeleted }) 
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                     Phân loại
@@ -392,6 +439,22 @@ export const LibraryTab: React.FC<LibraryTabProps> = ({ cards, onCardDeleted }) 
                     {CARD_CATEGORIES.map((cat) => (
                       <option key={cat} value={cat}>
                         {cat}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                    Chủ đề (Topic)
+                  </label>
+                  <select
+                    value={editTopic}
+                    onChange={(e) => setEditTopic(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs text-slate-900 dark:text-white"
+                  >
+                    {PRESET_TOPICS.map((top) => (
+                      <option key={top} value={top}>
+                        {top}
                       </option>
                     ))}
                   </select>

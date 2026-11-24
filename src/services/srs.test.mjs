@@ -8,7 +8,8 @@ import {
   stripPatternPlaceholders,
   getPreviewIntervalText,
 } from './srs.ts';
-import { MASTERED_BOX_THRESHOLD, MAX_SPEECH_ATTEMPTS, isValidEnglishTermPattern } from '../types/card.ts';
+import { MASTERED_BOX_THRESHOLD, MAX_SPEECH_ATTEMPTS, isValidEnglishTermPattern, PRESET_TOPICS } from '../types/card.ts';
+import { parseBatchTerms } from './batchImport.ts';
 
 console.log('--- RUNNING ENHANCED SRS UNIT TESTS ---');
 
@@ -114,4 +115,34 @@ const baseDate = new Date(2026, 10, 19, 10, 0, 0);
   console.log('✓ Test 10: isValidEnglishTermPattern passed');
 }
 
-console.log('--- ALL 10 SRS & VALIDATION UNIT TESTS PASSED SUCCESSFULLY! ---');
+// 11. Batch Word Parsing (parseBatchTerms)
+{
+  const rawInput = `
+    1. collaborate
+    - resilient
+    "take into account"
+    break the ice, collaborate; artificial intelligence
+  `;
+  const parsed = parseBatchTerms(rawInput);
+  assert.strictEqual(parsed.length, 5);
+  assert.strictEqual(parsed[0], 'collaborate');
+  assert.strictEqual(parsed[1], 'resilient');
+  assert.strictEqual(parsed[2], 'take into account');
+  assert.strictEqual(parsed[3], 'break the ice');
+  assert.strictEqual(parsed[4], 'artificial intelligence');
+
+  // Empty / whitespace
+  assert.deepStrictEqual(parseBatchTerms(''), []);
+  assert.deepStrictEqual(parseBatchTerms('   \n  \t '), []);
+  console.log('✓ Test 11: parseBatchTerms passed');
+}
+
+// 12. Topics Preset Verification
+{
+  assert.strictEqual(PRESET_TOPICS.includes('Chung'), true);
+  assert.strictEqual(PRESET_TOPICS.includes('IELTS & Học thuật'), true);
+  assert.strictEqual(PRESET_TOPICS.includes('Công sở & Kinh doanh'), true);
+  console.log('✓ Test 12: PRESET_TOPICS verified');
+}
+
+console.log('--- ALL 12 SRS, VALIDATION & BATCH IMPORT UNIT TESTS PASSED SUCCESSFULLY! ---');

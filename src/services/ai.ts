@@ -55,6 +55,7 @@ export interface AnalysisResult {
   synonyms: string;
   antonyms: string;
   fam: string;
+  topic?: string;
   isValid: boolean;
   isCorrected?: boolean;
   correctedFrom?: string;
@@ -134,6 +135,7 @@ function validateAndSanitizeAnalysis(parsed: Record<string, unknown> | null, fal
     synonyms: typeof parsed.synonyms === 'string' ? parsed.synonyms.trim() : '',
     antonyms: typeof parsed.antonyms === 'string' ? parsed.antonyms.trim() : '',
     fam: typeof parsed.fam === 'string' ? parsed.fam.trim() : '',
+    topic: typeof parsed.topic === 'string' && parsed.topic.trim() ? parsed.topic.trim() : 'Chung',
     isValid,
     isCorrected,
     correctedFrom,
@@ -184,6 +186,7 @@ export async function analyzeAndAutoFill(inputTerm: string): Promise<AnalysisRes
       synonyms: '',
       antonyms: '',
       fam: '',
+      topic: 'Chung',
       isValid: patternCheck.isValid,
       warningMessage: patternCheck.reason,
     };
@@ -199,6 +202,7 @@ YÊU CẦU ĐẶC BIỆT VỀ KIỂM TRA LỖI VÀ CHÍNH TẢ (Linguistic Valid
    - "synonyms": Các từ/cụm từ đồng nghĩa (ngăn cách bằng dấu phẩy)
    - "antonyms": Các từ/cụm từ trái nghĩa (ngăn cách bằng dấu phẩy)
    - "fam": Họ từ (Word Family) liệt kê các dạng từ loại khác (danh/động/tính/trạng từ), ví dụ: "act (v), active (adj), action (n)"
+4. "topic": Chọn một chủ đề phù hợp nhất trong số: Chung | Giao tiếp hằng ngày | Công sở & Kinh doanh | IELTS & Học thuật | Công nghệ & IT | Du lịch & Đời sống | Cảm xúc & Tính cách
 
 Yêu cầu trả về DUY NHẤT một chuỗi JSON thuần túy (không bọc trong \`\`\`json markdown), với cấu trúc sau:
 {
@@ -217,7 +221,8 @@ Yêu cầu trả về DUY NHẤT một chuỗi JSON thuần túy (không bọc t
   "ans": "chính xác phần từ được thay bằng ____",
   "synonyms": "từ đồng nghĩa (vd: fast, rapid, speedy)",
   "antonyms": "từ trái nghĩa (vd: slow, sluggish)",
-  "fam": "họ từ nếu có, ví dụ: act (v), active (adj), activity (n)"
+  "fam": "họ từ nếu có, ví dụ: act (v), active (adj), activity (n)",
+  "topic": "chọn 1 trong các chủ đề trên"
 }`;
 
   if (settings.provider === 'gemini') {

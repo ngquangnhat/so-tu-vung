@@ -9,6 +9,15 @@ export class VocabDatabase extends Dexie {
     this.version(1).stores({
       cards: 'id, term, cat, box, due, reviewCount, createdAt',
     });
+    this.version(2).stores({
+      cards: 'id, term, cat, topic, box, due, reviewCount, createdAt',
+    }).upgrade(async (tx) => {
+      await tx.table('cards').toCollection().modify((card: Record<string, unknown>) => {
+        if (!card.topic || typeof card.topic !== 'string') {
+          card.topic = 'Chung';
+        }
+      });
+    });
   }
 }
 
@@ -54,6 +63,7 @@ function sanitizeCardRecord(record: unknown): Card | null {
     synonyms: typeof record.synonyms === 'string' ? record.synonyms.trim() : '',
     antonyms: typeof record.antonyms === 'string' ? record.antonyms.trim() : '',
     fam: typeof record.fam === 'string' ? record.fam.trim() : '',
+    topic: typeof record.topic === 'string' && record.topic.trim() ? record.topic.trim() : 'Chung',
     box: boxNumber,
     due: typeof record.due === 'string' ? record.due : new Date().toISOString(),
     reviewCount,

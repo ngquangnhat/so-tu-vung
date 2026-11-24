@@ -15,6 +15,17 @@ export const CARD_CATEGORIES: readonly CardCategory[] = [
   'Cụm từ khác',
 ] as const;
 
+export const PRESET_TOPICS = [
+  'Chung',
+  'Giao tiếp hằng ngày',
+  'Công sở & Kinh doanh',
+  'IELTS & Học thuật',
+  'Công nghệ & IT',
+  'Du lịch & Đời sống',
+  'Cảm xúc & Tính cách',
+] as const;
+export type PresetTopic = (typeof PRESET_TOPICS)[number];
+
 export const MASTERED_BOX_THRESHOLD = 4;
 export const MAX_SPEECH_ATTEMPTS = 2;
 export const MAX_BOX_LEVEL = 5;
@@ -33,6 +44,7 @@ export interface Card {
   synonyms?: string;
   antonyms?: string;
   fam?: string;
+  topic?: string;
   box: number; // 0 to 5
   due: string; // ISO string
   reviewCount: number; // Total times reviewed (formerly 'n')

@@ -1,9 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Sparkles, PlusCircle, Check, AlertCircle, HelpCircle, Volume2, ShieldAlert, AlertTriangle } from 'lucide-react';
-import { CardCategory, CARD_CATEGORIES, Card, getErrorMessage, isValidEnglishTermPattern } from '../types/card';
+import { Sparkles, PlusCircle, Check, AlertCircle, HelpCircle, Volume2, ShieldAlert, AlertTriangle, Layers } from 'lucide-react';
+import { CardCategory, CARD_CATEGORIES, Card, PRESET_TOPICS, getErrorMessage, isValidEnglishTermPattern } from '../types/card';
 import { analyzeAndAutoFill } from '../services/ai';
 import { db } from '../services/db';
 import { speakText } from '../services/speech';
+import { BatchImportSection } from './BatchImportSection';
 
 interface AddCardTabProps {
   onCardAdded: () => void;
@@ -33,9 +34,12 @@ export const AddCardTab: React.FC<AddCardTabProps> = ({ onCardAdded, onOpenSetti
     };
   }, []);
 
+  const [entryMode, setEntryMode] = useState<'single' | 'batch'>('single');
+
   const [term, setTerm] = useState('');
   const [cat, setCat] = useState<CardCategory>('Từ đơn');
   const [pos, setPos] = useState('');
+  const [topic, setTopic] = useState('Chung');
   const [vi, setVi] = useState('');
   const [ipa, setIpa] = useState('');
   const [en, setEn] = useState('');
@@ -75,6 +79,7 @@ export const AddCardTab: React.FC<AddCardTabProps> = ({ onCardAdded, onOpenSetti
       setSynonyms(res.synonyms || '');
       setAntonyms(res.antonyms || '');
       setFam(res.fam || '');
+      setTopic(res.topic || 'Chung');
 
       const vInfo: ValidationInfo = {
         validatedTerm: res.term,
@@ -177,6 +182,7 @@ export const AddCardTab: React.FC<AddCardTabProps> = ({ onCardAdded, onOpenSetti
       synonyms: synonyms.trim(),
       antonyms: antonyms.trim(),
       fam: fam.trim(),
+      topic: topic.trim() || 'Chung',
       box: 0, // Cấp 0 ban đầu
       due: new Date().toISOString(), // Đến hạn ngay
       reviewCount: 0,
@@ -204,6 +210,7 @@ export const AddCardTab: React.FC<AddCardTabProps> = ({ onCardAdded, onOpenSetti
       setSynonyms('');
       setAntonyms('');
       setFam('');
+      setTopic('Chung');
       setValidationInfo(null);
 
       // Notify parent & keep focus on term input safely
@@ -227,8 +234,42 @@ export const AddCardTab: React.FC<AddCardTabProps> = ({ onCardAdded, onOpenSetti
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
-      {/* Top Card: Quick Input & AI Analysis */}
-      <div className="p-4 sm:p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm transition-colors">
+      {/* Switcher: Nhập từng từ vs Nhập hàng loạt */}
+      <div className="flex items-center justify-center">
+        <div className="inline-flex p-1 bg-slate-100 dark:bg-slate-800/80 rounded-2xl border border-slate-200 dark:border-slate-700/60 shadow-inner">
+          <button
+            type="button"
+            onClick={() => setEntryMode('single')}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+              entryMode === 'single'
+                ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm'
+                : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+            }`}
+          >
+            <PlusCircle className="w-3.5 h-3.5" />
+            Nhập từng từ
+          </button>
+          <button
+            type="button"
+            onClick={() => setEntryMode('batch')}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+              entryMode === 'batch'
+                ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm'
+                : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+            }`}
+          >
+            <Layers className="w-3.5 h-3.5" />
+            Nhập hàng loạt (Batch)
+          </button>
+        </div>
+      </div>
+
+      {entryMode === 'batch' ? (
+        <BatchImportSection onCardsSaved={onCardAdded} onOpenSettings={onOpenSettings} />
+      ) : (
+        <>
+          {/* Top Card: Quick Input & AI Analysis */}
+          <div className="p-4 sm:p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm transition-colors">
         <div className="flex items-center justify-between mb-4">
           <div>
             <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
@@ -350,7 +391,7 @@ export const AddCardTab: React.FC<AddCardTabProps> = ({ onCardAdded, onOpenSetti
           Thông tin chi tiết thẻ
         </h3>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {/* Phân loại */}
           <div>
             <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
@@ -381,6 +422,24 @@ export const AddCardTab: React.FC<AddCardTabProps> = ({ onCardAdded, onOpenSetti
               onChange={(e) => setPos(e.target.value)}
               className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
+          </div>
+
+          {/* Chủ đề */}
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+              Chủ đề (Topic)
+            </label>
+            <select
+              value={topic}
+              onChange={(e) => setTopic(e.target.value)}
+              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            >
+              {PRESET_TOPICS.map((top) => (
+                <option key={top} value={top}>
+                  {top}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
 
@@ -554,6 +613,8 @@ export const AddCardTab: React.FC<AddCardTabProps> = ({ onCardAdded, onOpenSetti
           </button>
         </div>
       </form>
+        </>
+      )}
     </div>
   );
 };

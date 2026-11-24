@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Play, Sparkles, CheckCircle, Clock, Shuffle, Layers, PenTool, Mic, Headphones } from 'lucide-react';
-import { Card, ReviewMode, MASTERED_BOX_THRESHOLD } from '../types/card';
+import { Play, Sparkles, CheckCircle, Clock, Shuffle, Layers, PenTool, Mic, Headphones, Bookmark } from 'lucide-react';
+import { Card, ReviewMode, MASTERED_BOX_THRESHOLD, PRESET_TOPICS } from '../types/card';
 import { groupCardsBySchedule, isDueToday } from '../services/srs';
 
 interface ReviewTabProps {
@@ -10,11 +10,16 @@ interface ReviewTabProps {
 
 export const ReviewTab: React.FC<ReviewTabProps> = ({ cards, onStartSession }) => {
   const [selectedMode, setSelectedMode] = useState<ReviewMode>('mix');
+  const [selectedTopic, setSelectedTopic] = useState<string>('all');
 
   // Stats
   const dueCardsToday = cards.filter((card) => isDueToday(card.due));
   const totalCards = cards.length;
   const masteredCards = cards.filter((card) => card.box >= MASTERED_BOX_THRESHOLD);
+
+  // Filtered by practice topic
+  const activeCards = selectedTopic === 'all' ? cards : cards.filter((cardItem) => (cardItem.topic || 'Chung') === selectedTopic);
+  const activeDueCards = activeCards.filter((cardItem) => isDueToday(cardItem.due));
 
   // Grouped cards for schedule view
   const scheduleGroups = groupCardsBySchedule(cards);
@@ -117,25 +122,75 @@ export const ReviewTab: React.FC<ReviewTabProps> = ({ cards, onStartSession }) =
 
           <div className="grid grid-cols-1 sm:flex sm:flex-wrap items-stretch sm:items-center gap-2 w-full sm:w-auto">
             <button
-              onClick={() => onStartSession(selectedMode, dueCardsToday, false)}
-              disabled={dueCardsToday.length === 0}
-              title={dueCardsToday.length === 0 ? 'Hôm nay chưa có thẻ nào đến hạn ôn' : 'Bắt đầu phiên ôn thẻ đến hạn'}
+              onClick={() => onStartSession(selectedMode, activeDueCards, false)}
+              disabled={activeDueCards.length === 0}
+              title={activeDueCards.length === 0 ? 'Chưa có thẻ nào đến hạn ôn' : 'Bắt đầu phiên ôn thẻ đến hạn'}
               className="w-full sm:w-auto px-5 py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs sm:text-sm shadow-lg shadow-indigo-600/25 disabled:opacity-40 disabled:cursor-not-allowed transition flex items-center justify-center gap-2"
             >
               <Play className="w-4 h-4 fill-current" />
-              Ôn thẻ đến hạn ({dueCardsToday.length})
+              Ôn thẻ đến hạn ({activeDueCards.length})
+              {selectedTopic !== 'all' && <span className="opacity-80 font-normal">({selectedTopic})</span>}
             </button>
 
-            {totalCards > 0 && (
+            {activeCards.length > 0 && (
               <button
-                onClick={() => onStartSession(selectedMode, cards, true)}
-                title="Luyện tập tự do tất cả thẻ trong sổ theo dạng bài đã chọn mà không làm xáo trộn tiến độ SRS"
+                onClick={() => onStartSession(selectedMode, activeCards, true)}
+                title="Luyện tập tự do thẻ theo dạng bài đã chọn mà không làm xáo trộn tiến độ SRS"
                 className="w-full sm:w-auto px-4 py-3 rounded-2xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs sm:text-sm border border-slate-300/60 dark:border-slate-700 transition flex items-center justify-center gap-2"
               >
                 <Sparkles className="w-4 h-4 text-indigo-500" />
-                Luyện tự do ({totalCards} từ)
+                Luyện tự do ({activeCards.length} từ)
+                {selectedTopic !== 'all' && <span className="opacity-80 font-normal">({selectedTopic})</span>}
               </button>
             )}
+          </div>
+        </div>
+
+        {/* Topic Practice Filter Row */}
+        <div className="pt-3 border-t border-slate-100 dark:border-slate-800/80 space-y-2">
+          <div className="flex items-center justify-between text-xs">
+            <span className="font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+              <Bookmark className="w-4 h-4 text-indigo-500" />
+              Luyện tập theo Chủ đề:
+            </span>
+            {selectedTopic !== 'all' && (
+              <button
+                onClick={() => setSelectedTopic('all')}
+                className="text-indigo-600 dark:text-indigo-400 hover:underline font-medium"
+              >
+                Xóa lọc (Xem tất cả)
+              </button>
+            )}
+          </div>
+
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs no-scrollbar">
+            <button
+              onClick={() => setSelectedTopic('all')}
+              className={`px-3 py-1.5 rounded-xl font-medium shrink-0 transition text-[11px] ${
+                selectedTopic === 'all'
+                  ? 'bg-violet-600 text-white shadow-sm'
+                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+              }`}
+            >
+              Tất cả chủ đề ({totalCards})
+            </button>
+            {PRESET_TOPICS.map((top) => {
+              const count = cards.filter((cardItem) => (cardItem.topic || 'Chung') === top).length;
+              if (count === 0) return null;
+              return (
+                <button
+                  key={top}
+                  onClick={() => setSelectedTopic(top)}
+                  className={`px-3 py-1.5 rounded-xl font-medium shrink-0 transition text-[11px] flex items-center gap-1 ${
+                    selectedTopic === top
+                      ? 'bg-violet-600 text-white shadow-sm'
+                      : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+                  }`}
+                >
+                  {top} <span className="opacity-75 font-bold">({count})</span>
+                </button>
+              );
+            })}
           </div>
         </div>
 

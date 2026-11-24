@@ -151,7 +151,9 @@ export const ReviewSession: React.FC<ReviewSessionProps> = ({
       if (speechRecognizerRef.current) {
         try {
           speechRecognizerRef.current.stop();
-        } catch (_) { }
+        } catch (recognitionError: unknown) {
+          // Ignore abort error on unmount
+        }
       }
     };
   }, []);
@@ -482,9 +484,14 @@ export const ReviewSession: React.FC<ReviewSessionProps> = ({
         {effectiveMode === 'flip' && (
           <div className="space-y-6 text-center">
             <div className="min-h-[140px] sm:min-h-[160px] flex flex-col justify-center items-center space-y-3">
-              <span className="text-xs uppercase font-semibold tracking-wider text-slate-400">
-                {currentCard.cat} • {currentCard.pos || 'từ vựng'}
-              </span>
+              <div className="flex flex-wrap items-center justify-center gap-2 text-xs uppercase font-semibold tracking-wider text-slate-400">
+                <span>{currentCard.cat} • {currentCard.pos || 'từ vựng'}</span>
+                {currentCard.topic && currentCard.topic !== 'Chung' && (
+                  <span className="px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 text-[10px] normal-case font-medium">
+                    {currentCard.topic}
+                  </span>
+                )}
+              </div>
 
               <h3 className="text-2xl sm:text-4xl font-extrabold text-slate-900 dark:text-white tracking-tight break-words max-w-full">
                 {currentCard.term}
